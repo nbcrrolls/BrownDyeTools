@@ -1,7 +1,10 @@
 #!/usr/bin/env python2
 #-*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-10 12:36:22
+# Last modified: 2016-11-10 20:47:05
+#
+# GNU statement
+#
 
 import os, subprocess
 import sys, string
@@ -403,7 +406,7 @@ class BDPlugin:
                                     entry_width=8)
 
         get_size1_but = Tkinter.Button(group_grids,
-                                      text="Get grid size for molecule",
+                                      text="Get grid size for molecule 1",
                                       command=self.getSizemol1)
 
         label0.grid(sticky='we', row=0, column=0, padx=5, pady=10)
@@ -739,40 +742,34 @@ http://browndye.ucsd.edu/
 
     def getSizemol0(self):
         pqr_filename = 'mol0.pqr'
+        if not os.path.isfile(pqr_filename):
+            print("::: " + pqr_filename + " does not exist!")
+            return
         psize = Psize()
         psize.runPsize(pqr_filename)
         #print(psize.getCharge())
         grid_points = psize.getFineGridPoints()
         cglen = psize.getCoarseGridDims()
         fglen = psize.getFineGridDims()
-        self.dime0[0].set(grid_points[0])
-        self.dime0[1].set(grid_points[1])
-        self.dime0[2].set(grid_points[2])
-        self.cglen0[0].set(cglen[0])
-        self.cglen0[1].set(cglen[1])
-        self.cglen0[2].set(cglen[2])
-        self.fglen0[0].set(fglen[0])
-        self.fglen0[1].set(fglen[0])
-        self.fglen0[2].set(fglen[0])
+        [self.dime0[x].set(grid_points[x]) for x in range(3)]
+        [self.cglen0[x].set(cglen[x]) for x in range(3)]
+        [self.fglen0[x].set(fglen[x]) for x in range(3)]
         return
 
     def getSizemol1(self):
         pqr_filename = 'mol1.pqr'
+        if not os.path.isfile(pqr_filename):
+            print("::: " + pqr_filename + " does not exist!")
+            return
         psize = Psize()
         psize.runPsize(pqr_filename)
         #print(psize.getCharge())
         grid_points = psize.getFineGridPoints()
         cglen = psize.getCoarseGridDims()
         fglen = psize.getFineGridDims()
-        self.dime1[0].set(grid_points[0])
-        self.dime1[1].set(grid_points[1])
-        self.dime1[2].set(grid_points[2])
-        self.cglen1[0].set(cglen[0])
-        self.cglen1[1].set(cglen[1])
-        self.cglen1[2].set(cglen[2])
-        self.fglen1[0].set(fglen[0])
-        self.fglen1[1].set(fglen[0])
-        self.fglen1[2].set(fglen[0])
+        [self.dime1[x].set(grid_points[x]) for x in range(3)]
+        [self.cglen1[x].set(cglen[x]) for x in range(3)]
+        [self.fglen1[x].set(fglen[x]) for x in range(3)]
         return
     
     def getContacts(self):
@@ -784,8 +781,14 @@ http://browndye.ucsd.edu/
         return
     
     def pdb2pqr(self):
-        os.system("cp %s ./mol0.pdb" % self.mol0.get())
-        os.system("cp %s ./mol1.pdb" % self.mol1.get())
+        rc = os.system("cp %s ./mol0.pdb" % self.mol0.get())
+        if rc > 0:
+            print ("::: Creating mol0.pdb failed!")
+            return
+        rc = os.system("cp %s ./mol1.pdb" % self.mol1.get())
+        if rc > 0:
+            print ("::: Creating mol1.pdb failed!")
+            return
         an = ''
         if self.pqr_assign_only.get(): an = '--assign-only'
         
@@ -798,7 +801,7 @@ http://browndye.ucsd.edu/
             print("::: Running pdb2pqr on " + i + " ...")
             rc = self.runcmd(command)
             if rc != 0:
-                print("::: Failed: " + command)
+                print("::: Command failed: " + command)
         return
 
     def runAPBS(self):
@@ -1006,6 +1009,9 @@ quit
         return
 
 class Psize:
+    """
+    This is based on pdb2pqr version of psize. All licensing info applies.
+    """
     def __init__(self):
         self.constants = {"CFAC":1.7, "FADD":20, "SPACE":0.50, "GMEMFAC":200, "GMEMCEIL":400,
                           "OFAC":0.1, "REDFAC":0.25, "TFAC_ALPHA":9e-5,
