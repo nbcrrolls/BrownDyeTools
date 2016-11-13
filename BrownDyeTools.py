@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 #-*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-11 17:34:56
+# Last modified: 2016-11-12 18:09:17
 #
 # GNU statement
 #
@@ -10,6 +10,7 @@ import os, subprocess
 import sys, string
 #from sys import stdout
 #from math import log
+import random
 import time
 import tkSimpleDialog
 import tkMessageBox
@@ -19,6 +20,10 @@ import Tkinter
 import Pmw
 
 DEBUG = 5
+
+version_maj = "0"
+version_min = "1"
+VERSION = "%s.%s" % (version_maj, version_min)
 
 PDB2PQR_PATH = ''
 APBS_PATH = ''
@@ -52,6 +57,8 @@ class BDPlugin:
                                 command=self.execute)
         Pmw.setbusycursorattributes(self.dialog.component('hull'))
 
+        self.projectDir = Tkinter.StringVar()
+        self.projectDir.set(self.getProjectDir())
         self.pdb2pqr_path = Tkinter.StringVar()
         self.pdb2pqr_path.set(PDB2PQR_PATH)
         self.apbs_path = Tkinter.StringVar()
@@ -59,7 +66,7 @@ class BDPlugin:
         self.bd_path = Tkinter.StringVar()
         self.bd_path.set(BD_PATH)
                 
-        # parameters used by BD
+        # parameters used by pdb2pqr
         self.mol0 = Tkinter.StringVar()
         self.mol1 = Tkinter.StringVar()
         self.mol0.set('mol0.pdb') # for testing only
@@ -83,20 +90,20 @@ class BDPlugin:
         self.cglen1 = [Tkinter.DoubleVar(), Tkinter.DoubleVar(), Tkinter.DoubleVar()]
         [self.cglen1[x].set(0.0) for x in  range(3)]
         self.fglen1 = [Tkinter.DoubleVar(), Tkinter.DoubleVar(), Tkinter.DoubleVar()]
-        [self.fglen1[0].set(0.0) for x in range(3)]
+        [self.fglen1[x].set(0.0) for x in range(3)]
 
         self.apbs_mode = Tkinter.StringVar()
         self.apbs_mode.set('lpbe')
         self.bcfl = Tkinter.StringVar()
         self.bcfl.set('sdh')
-        self.ion_plus_one_conc = Tkinter.DoubleVar()
-        self.ion_plus_one_conc.set(0.15)
-        self.ion_plus_one_rad = Tkinter.DoubleVar()
-        self.ion_plus_one_rad.set(0.2)
-        self.ion_minus_one_conc = Tkinter.DoubleVar()
-        self.ion_minus_one_conc.set(0.15)
-        self.ion_minus_one_rad = Tkinter.DoubleVar()
-        self.ion_minus_one_rad.set(0.2)
+        self.ion_charge = [Tkinter.IntVar(), Tkinter.IntVar()]
+        self.ion_conc = [Tkinter.DoubleVar(), Tkinter.DoubleVar()]
+        self.ion_rad = [Tkinter.DoubleVar(), Tkinter.DoubleVar()]
+        self.ion_charge[0].set(1)
+        self.ion_charge[1].set(-1)
+        [self.ion_conc[x].set(0.15) for x in range(2)] 
+        [self.ion_rad[x].set(1.0) for x in range(2)]
+
         self.interior_dielectric = Tkinter.DoubleVar()
         self.interior_dielectric.set(4.0)
         self.solvent_dielectric = Tkinter.DoubleVar()
@@ -161,13 +168,13 @@ class BDPlugin:
         self.cleanup_saved_pymol_sel.set(True) # by default, clean up
 
         w = Tkinter.Label(self.dialog.interior(),
-                          text = '\nBrownDye Plugin for PyMOL\nrok@NBCR, 2016\n\n\
-   Plugin for setting up and running BrownDye Browndian dynamics simulations.',
-                          background = 'black', foreground = 'green'
-                          )
+                          text = '\nBrownDye Plugin for PyMOL\nVersion ' + VERSION + 
+                          ', NBCR 2016\n\n' +
+                          'Plugin for setting up and running BrownDye Browndian dynamics simulations.',
+                          background='black', foreground='green')
         w.pack(expand=1, fill='both', padx=10, pady=5)
 
-        # make a few tabs within the dialog
+        # make a notebook
         self.notebook = Pmw.NoteBook(self.dialog.interior())
         self.notebook.pack(fill='both', expand=1, padx=10, pady=10)
 
@@ -182,15 +189,17 @@ class BDPlugin:
         pymol_sel_ent = Pmw.EntryField(config,
                                        label_text='PyMOL selection:',
                                        labelpos='wn',
-                                       entry_textvariable=self.pymol_sel
-                                       )
+                                       entry_textvariable=self.pymol_sel)
         clean_cb = Tkinter.Checkbutton(config,
                                        text='Clean up tmp pdb (saved PyMOL selection) in the temp dir.', 
                                        variable=self.cleanup_saved_pymol_sel,
                                        onvalue=True, offvalue=False)
         label = Tkinter.Label(config, text='or')
-
-
+        
+        project_path_ent = Pmw.EntryField(config,
+                                          label_text='Project directory: ', labelpos='wn',
+                                          entry_textvariable=self.projectDir)
+        project_path_but = Tkinter.Button(config, text='Create', command=self.createProjectDir)
         pdb2pqr_path_ent = Pmw.EntryField(config,
                                           label_text='Select PDB2PQR location: ', labelpos='wn',
                                           entry_textvariable=self.pdb2pqr_path)
@@ -200,14 +209,16 @@ class BDPlugin:
                                        entry_textvariable=self.apbs_path)
         apbs_path_but = Tkinter.Button(config, text='Browse...', command=self.getAPBSpath)
         bd_path_ent = Pmw.EntryField(config,
-                                    label_text='Select BD_PATH location: ', labelpos='wn',
+                                     label_text='Select BD_PATH location: ', labelpos='wn',
                                      entry_textvariable=self.bd_path)
         bd_path_but = Tkinter.Button(config, text='Browse...', command=self.getBDpath)
 
         # arrange widgets using grid
-        pymol_sel_ent.grid(sticky='we', row=0, column=0, columnspan=2, padx=5, pady=5)
-        clean_cb.grid(sticky='w', row=1, column=0, columnspan=2, padx=1, pady=1)
-        label.grid(sticky='we', row=2, column=0, columnspan=2, padx=5, pady=10)
+        #pymol_sel_ent.grid(sticky='we', row=0, column=0, columnspan=2, padx=5, pady=5)
+        #clean_cb.grid(sticky='w', row=1, column=0, columnspan=2, padx=1, pady=1)
+        #label.grid(sticky='we', row=2, column=0, columnspan=2, padx=5, pady=10)
+        project_path_ent.grid(sticky='we', row=1, column=0, padx=5, pady=5)
+        project_path_but.grid(sticky='we', row=1, column=1, padx=5, pady=5)
         pdb2pqr_path_ent.grid(sticky='we', row=3, column=0, padx=5, pady=5)
         pdb2pqr_path_but.grid(sticky='we', row=3, column=1, padx=5, pady=5)
         apbs_path_ent.grid(   sticky='we', row=4, column=0, padx=5, pady=5)
@@ -243,7 +254,7 @@ class BDPlugin:
                                     label_text='Force field: ',
                                     menubutton_textvariable=self.pqr_ff,
                                     menubutton_width=7,
-                                    items=['parse', 'charmm'])
+                                    items=['parse', 'charmm', 'amber'])
         pqr_an_but = Tkinter.Checkbutton(group_pqr,
                                          text='Assign charge and radius only (no structure optimization)', 
                                          variable=self.pqr_assign_only,
@@ -435,31 +446,42 @@ class BDPlugin:
                                         validate={'validator':'real', 'min':0.00},
                                         entry_textvariable=self.interior_dielectric,
                                         entry_width=10)
-
-        ion_plus_one_conc_ent = Pmw.EntryField(group_apbs, labelpos='w',
-                                               label_text='Ion +1 conc.: ',
-                                               value=self.ion_plus_one_conc.get(),
-                                               validate={'validator':'real', 'min':0.00},
-                                               entry_textvariable=self.ion_plus_one_conc,
-                                               entry_width=5)
-        ion_plus_one_rad_ent = Pmw.EntryField(group_apbs, labelpos='w',
-                                              label_text='radius: ',
-                                              value=self.ion_plus_one_rad.get(),
-                                              validate={'validator':'real', 'min':0.00},
-                                              entry_textvariable=self.ion_plus_one_rad,
-                                              entry_width=5)
-        ion_minus_one_conc_ent = Pmw.EntryField(group_apbs, labelpos='w',
-                                                label_text='Ion -1 conc.: ',
-                                                value=self.ion_minus_one_conc.get(),
-                                                validate={'validator':'real', 'min':0.00},
-                                                entry_textvariable=self.ion_minus_one_conc,
-                                                entry_width=5)
-        ion_minus_one_rad_ent = Pmw.EntryField(group_apbs, labelpos='w',
-                                               label_text='radius: ',
-                                               value=self.ion_minus_one_rad.get(),
-                                               validate={'validator':'real', 'min':0.00},
-                                               entry_textvariable=self.ion_minus_one_rad,
-                                               entry_width=5)
+        ion1_charge_ent = Pmw.EntryField(group_apbs, labelpos='w',
+                                         label_text='Ion 1 charge: ',
+                                         value=self.ion_charge[0].get(),
+                                         validate={'validator':'integer', 'min':-2},
+                                         entry_textvariable=self.ion_charge[0],
+                                         entry_width=5)
+        ion1_conc_ent = Pmw.EntryField(group_apbs, labelpos='w',
+                                       label_text='conc.: ',
+                                       value=self.ion_conc[0].get(),
+                                       validate={'validator':'real', 'min':0.00},
+                                       entry_textvariable=self.ion_conc[0],
+                                       entry_width=5)
+        ion1_rad_ent = Pmw.EntryField(group_apbs, labelpos='w',
+                                      label_text='radius: ',
+                                      value=self.ion_rad[0].get(),
+                                      validate={'validator':'real', 'min':0.00},
+                                      entry_textvariable=self.ion_rad[0],
+                                      entry_width=5)
+        ion2_charge_ent = Pmw.EntryField(group_apbs, labelpos='w',
+                                         label_text='Ion 2 charge.: ',
+                                         value=self.ion_charge[1].get(),
+                                         validate={'validator':'integer', 'min':-2},
+                                         entry_textvariable=self.ion_charge[1],
+                                         entry_width=5)
+        ion2_conc_ent = Pmw.EntryField(group_apbs, labelpos='w',
+                                       label_text='conc.: ',
+                                       value=self.ion_conc[1].get(),
+                                       validate={'validator':'real', 'min':0.00},
+                                       entry_textvariable=self.ion_conc[1],
+                                       entry_width=5)
+        ion2_rad_ent = Pmw.EntryField(group_apbs, labelpos='w',
+                                      label_text='radius: ',
+                                      value=self.ion_rad[1].get(),
+                                      validate={'validator':'real', 'min':0.00},
+                                      entry_textvariable=self.ion_rad[1],
+                                      entry_width=5)
 
         sdens_ent = Pmw.EntryField(group_apbs, labelpos='w',
                                    label_text='Surf. sphere density: ',
@@ -508,17 +530,19 @@ class BDPlugin:
         swin_ent.grid(       sticky='we', row=4, column=0, padx=5, pady=1)
         temp_ent.grid(       sticky='we', row=5, column=0, padx=5, pady=1)
 
-        ion_plus_one_conc_ent.grid( sticky='we', row=6, column=0, padx=5, pady=1)
-        ion_plus_one_rad_ent.grid(  sticky='we', row=6, column=1, padx=5, pady=1)
-        ion_minus_one_conc_ent.grid(sticky='we', row=7, column=0, padx=5, pady=1)
-        ion_minus_one_rad_ent.grid( sticky='we', row=7, column=1, padx=5, pady=1)
+        ion1_charge_ent.grid( sticky='we', row=6, column=0, padx=5, pady=1)
+        ion1_conc_ent.grid( sticky='we', row=6, column=1, padx=5, pady=1)
+        ion1_rad_ent.grid(  sticky='we', row=6, column=2, padx=5, pady=1)
+        ion2_charge_ent.grid(sticky='we', row=7, column=0, padx=5, pady=1)
+        ion2_conc_ent.grid(sticky='we', row=7, column=1, padx=5, pady=1)
+        ion2_rad_ent.grid( sticky='we', row=7, column=2, padx=5, pady=1)
 
-        apbs_mode_ent.grid(  sticky='we', row=0, column=1, padx=5, pady=1)
-        bcfl_ent.grid(              sticky='we', row=1, column=1, padx=5, pady=1)
-        chgm_ent.grid(              sticky='we', row=2, column=1, padx=5, pady=1)
-        srfm_ent.grid(              sticky='we', row=3, column=1, padx=5, pady=1)
+        apbs_mode_ent.grid(  sticky='we', row=0, column=1, columnspan=2, padx=5, pady=1)
+        bcfl_ent.grid(              sticky='we', row=1, columnspan=2, column=1, padx=5, pady=1)
+        chgm_ent.grid(              sticky='we', row=2, columnspan=2, column=1, padx=5, pady=1)
+        srfm_ent.grid(              sticky='we', row=3, columnspan=2, column=1, padx=5, pady=1)
 
-        run_apbs_but.grid(sticky='we', row=8, column=0, columnspan=2, padx=5, pady=1)
+        run_apbs_but.grid(sticky='we', row=8, column=0, columnspan=3, padx=5, pady=1)
 
         ###############################
         # Tab: Reaction criteria setup
@@ -650,15 +674,24 @@ class BDPlugin:
         page = self.notebook.add('About')
         group_about = Tkinter.LabelFrame(page, text='About BrownDye Plugin for PyMOL')
         group_about.grid(sticky='n', row=0, column=0, columnspan=2, padx=10, pady=5)
-        about_plugin = ''' This plugin provides a GUI for setting up and running Brownian \
+        about_plugin = '''
+
+This plugin provides a GUI for setting up and running Brownian \
 dynamics simulations with BrownDye.
 
 The plugin requires PDB2PQR, APBS and BrownDye. To download and \
 install these applications go to:
 
 http://www.poissonboltzmann.org/
- and 
+and 
 http://browndye.ucsd.edu/
+
+This software is released under the terms of GNU GPL2 license. For \
+more details please see the accompying documentation.
+
+(c) 2016 National Biomedical Computation Resource
+http://nbcr.ucsd.edu/
+
 '''
 
         label_about = Tkinter.Label(group_about, text=about_plugin)
@@ -667,8 +700,23 @@ http://browndye.ucsd.edu/
         self.notebook.setnaturalsize()
         return
 
+    def getProjectDir(self):
+        rndID = random.randint(1000, 9999)
+        cwd = os.getcwd()
+        pDir = cwd + '/BD-project-' + str(rndID)
+        return pDir
+    
+    def createProjectDir(self):
+        if os.path.exists(self.projectDir.get()):
+            print("This directory already exists!")
+            return
+        os.makedirs(self.projectDir.get())
+        os.chdir(self.projectDir.get())
+        return
+
     def runcmd(self, command):
-        p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        p = subprocess.Popen(command, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, shell=True)
         p.wait()
         (out,err) = p.communicate();
         if (DEBUG > 2): print("returncode = %d" % p.returncode)
@@ -770,9 +818,7 @@ http://browndye.ucsd.edu/
             return
         an = ''
         if self.pqr_assign_only.get(): an = '--assign-only'
-        
         pqr_options = an + ' ' + self.pdb2pqr_opt.get() + ' --ff=' + self.pqr_ff.get()
-        
         for i in ['mol0', 'mol1']:
             command = self.pdb2pqr_path.get() + '/pdb2pqr ' + \
                       pqr_options + ' ' + i + '.pdb ' + i + '.pqr'
@@ -845,8 +891,8 @@ quit
                         cglen[0], cglen[1], cglen[2],
                         fglen[0], fglen[1], fglen[2], 
                         self.apbs_mode.get(), self.bcfl.get(),
-                        self.ion_plus_one_conc.get(), self.ion_plus_one_rad.get(),
-                        self.ion_minus_one_conc.get(), self.ion_minus_one_rad.get(),
+                        self.ion_conc[0].get(), self.ion_rad[0].get(),
+                        self.ion_conc[1].get(), self.ion_rad[1].get(),
                         self.interior_dielectric.get(), self.solvent_dielectric.get(),
                         self.chgm.get(), self.sdens.get(), self.srfm.get(),
                         self.srad.get(), self.swin.get(), self.system_temp.get(),
@@ -888,7 +934,8 @@ quit
             print("::: Failed: " + command)
         command = self.bd_path.get() + '/make_rxn_file ' + \
                   '-pairs mol0-mol1-rxn-pairs.xml -distance ' + \
-                  str(self.rxn_distance.get()) + ' -nneeded ' + str(self.npairs.get()) + ' > mol0-mol1-rxns.xml'
+                  str(self.rxn_distance.get()) + ' -nneeded ' + \
+                  str(self.npairs.get()) + ' > mol0-mol1-rxns.xml'
         if (DEBUG > 0): print(command)
         print("::: Running make_rxn_file ...")
         rc = self.runcmd(command)
@@ -952,14 +999,18 @@ quit
 '''
         fout = open('input.xml', "w")
         fout.write(nam_simulation_template % \
-                   (self.solvent_eps.get(), self.debyel.get(), self.ntraj.get(), self.nthreads.get(),
-                    self.mol0_eps.get(), self.mol1_eps.get(), self.mindx.get(), self.ntrajo.get(), self.ncopies.get(),
-                    self.nbincopies.get(), self.nsteps.get(), self.westeps.get(), self.maxnsteps.get()))
+                   (self.solvent_eps.get(), self.debyel.get(),
+                    self.ntraj.get(), self.nthreads.get(),
+                    self.mol0_eps.get(), self.mol1_eps.get(),
+                    self.mindx.get(), self.ntrajo.get(),
+                    self.ncopies.get(), self.nbincopies.get(),
+                    self.nsteps.get(), self.westeps.get(),
+                    self.maxnsteps.get()))
 
         fout.close()
-
         # FIXME check for .dx files
-        command = 'PATH=' + self.bd_path.get() + ':${PATH}' + ' bd_top' + ' input.xml'
+        command = 'PATH=' + self.bd_path.get() + ':${PATH}' + \
+                          ' bd_top' + ' input.xml'
         if (DEBUG > 0): print(command)
         print("::: Running bd_top ...")
         rc = self.runcmd(command)
@@ -1066,7 +1117,6 @@ class Psize:
                 self.olen[i] = 0.1
         return self.olen
 
-
     def setCoarseGridDims(self, olen):
         """ Compute coarse mesh dimensions """
         for i in range(3):
@@ -1135,9 +1185,7 @@ class Psize:
 
 #############################################
 #
-#
 # Create root window for testing.
-#
 #
 ##############################################
 if __name__ == '__main__':
