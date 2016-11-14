@@ -1,12 +1,12 @@
 #!/usr/bin/env python2
 #-*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-12 18:09:17
+# Last modified: 2016-11-14 14:07:46
 #
 # GNU statement
 #
-
-import os, subprocess
+from __future__ import print_function
+import os, subprocess, commands
 import sys, string
 #from sys import stdout
 #from math import log
@@ -18,16 +18,16 @@ import tkFileDialog
 import tkColorChooser
 import Tkinter
 import Pmw
+from threading import Thread
 
 DEBUG = 5
 
-version_maj = "0"
-version_min = "1"
-VERSION = "%s.%s" % (version_maj, version_min)
+__version__ = "0.0.1"
 
 PDB2PQR_PATH = ''
 APBS_PATH = ''
 BD_PATH = ''
+logfile = "LOGFILE"
 
 if DEBUG > 0:
     PDB2PQR_PATH = '/opt/pdb2pqr-linux-bin64-2.1.0/'
@@ -168,7 +168,7 @@ class BDPlugin:
         self.cleanup_saved_pymol_sel.set(True) # by default, clean up
 
         w = Tkinter.Label(self.dialog.interior(),
-                          text = '\nBrownDye Plugin for PyMOL\nVersion ' + VERSION + 
+                          text = '\nBrownDye Plugin for PyMOL\nVersion ' + __version__ + 
                           ', NBCR 2016\n\n' +
                           'Plugin for setting up and running BrownDye Browndian dynamics simulations.',
                           background='black', foreground='green')
@@ -194,11 +194,13 @@ class BDPlugin:
                                        text='Clean up tmp pdb (saved PyMOL selection) in the temp dir.', 
                                        variable=self.cleanup_saved_pymol_sel,
                                        onvalue=True, offvalue=False)
-        label = Tkinter.Label(config, text='or')
         
         project_path_ent = Pmw.EntryField(config,
                                           label_text='Project directory: ', labelpos='wn',
                                           entry_textvariable=self.projectDir)
+        project_path_b_but = Tkinter.Button(config, text='Browse ...',
+                                            command=self.browseProjectDir)
+        label = Tkinter.Label(config, text='or')
         project_path_but = Tkinter.Button(config, text='Create', command=self.createProjectDir)
         pdb2pqr_path_ent = Pmw.EntryField(config,
                                           label_text='Select PDB2PQR location: ', labelpos='wn',
@@ -216,17 +218,18 @@ class BDPlugin:
         # arrange widgets using grid
         #pymol_sel_ent.grid(sticky='we', row=0, column=0, columnspan=2, padx=5, pady=5)
         #clean_cb.grid(sticky='w', row=1, column=0, columnspan=2, padx=1, pady=1)
-        #label.grid(sticky='we', row=2, column=0, columnspan=2, padx=5, pady=10)
-        project_path_ent.grid(sticky='we', row=1, column=0, padx=5, pady=5)
-        project_path_but.grid(sticky='we', row=1, column=1, padx=5, pady=5)
-        pdb2pqr_path_ent.grid(sticky='we', row=3, column=0, padx=5, pady=5)
-        pdb2pqr_path_but.grid(sticky='we', row=3, column=1, padx=5, pady=5)
-        apbs_path_ent.grid(   sticky='we', row=4, column=0, padx=5, pady=5)
-        apbs_path_but.grid(   sticky='we', row=4, column=1, padx=5, pady=5)
-        bd_path_ent.grid(     sticky='we', row=5, column=0, padx=5, pady=5)
-        bd_path_but.grid(     sticky='we', row=5, column=1, padx=5, pady=5)
-        config.columnconfigure(0, weight=9)
-        config.columnconfigure(1, weight=1)
+        project_path_ent.grid( sticky='we', row=1, column=0, padx=5, pady=5)
+        project_path_b_but.grid(sticky='we', row=1, column=1, padx=5, pady=5)
+        label.grid(           sticky='we', row=1, column=2, padx=5, pady=10)
+        project_path_but.grid(sticky='we', row=1, column=3, padx=5, pady=5)
+        pdb2pqr_path_ent.grid(sticky='we', row=2, column=0, padx=5, pady=5)
+        pdb2pqr_path_but.grid(sticky='we', row=2, column=1, padx=5, pady=5)
+        apbs_path_ent.grid(   sticky='we', row=3, column=0, padx=5, pady=5)
+        apbs_path_but.grid(   sticky='we', row=3, column=1, padx=5, pady=5)
+        bd_path_ent.grid(     sticky='we', row=4, column=0, padx=5, pady=5)
+        bd_path_but.grid(     sticky='we', row=4, column=1, padx=5, pady=5)
+        config.columnconfigure(0, weight=8)
+        config.columnconfigure(1, weight=2)
 
         #############################
         # Tab: PQR files preparation
@@ -337,7 +340,7 @@ class BDPlugin:
                                       entry_textvariable=self.fglen0[2],
                                       entry_width=8)
         get_size0_but = Tkinter.Button(group_grids,
-                                       text="Get grid size for molecule 0",
+                                       text="Get grid size for mol 0",
                                        command=self.getSizemol0)
 
         label1 = Tkinter.Label(group_grids, text='Molecule 1')
@@ -398,7 +401,7 @@ class BDPlugin:
                                       entry_width=8)
         
         get_size1_but = Tkinter.Button(group_grids,
-                                       text="Get grid size for molecule 1",
+                                       text="Get grid size for mol 1",
                                        command=self.getSizemol1)
 
         label0.grid(sticky='we', row=0, column=0, padx=5, pady=10)
@@ -465,7 +468,7 @@ class BDPlugin:
                                       entry_textvariable=self.ion_rad[0],
                                       entry_width=5)
         ion2_charge_ent = Pmw.EntryField(group_apbs, labelpos='w',
-                                         label_text='Ion 2 charge.: ',
+                                         label_text='Ion 2 charge: ',
                                          value=self.ion_charge[1].get(),
                                          validate={'validator':'integer', 'min':-2},
                                          entry_textvariable=self.ion_charge[1],
@@ -667,6 +670,24 @@ class BDPlugin:
 
         prep_bd_but.grid(    sticky='we', row=8, column=0, padx=5, pady=1)
         run_bd_but.grid(     sticky='we', row=8, column=1, padx=5, pady=1)
+
+        ######################
+        # Tab: Results
+        ######################
+        page = self.notebook.add('Results')
+        group_results = Tkinter.LabelFrame(page, text='Results')
+        group_results.grid(sticky='eswn', row=0, column=0, columnspan=2, padx=10, pady=5)
+
+        self.logtxt_ent = Pmw.ScrolledText(group_results, labelpos='wn',
+                                      borderframe=5, 
+                                      vscrollmode='dynamic',
+                                      hscrollmode='dynamic',
+                                      text_width=100, text_height=15,
+                                      text_wrap='none',
+                                      text_background='#000000',
+                                      text_foreground='green')
+
+        self.logtxt_ent.grid(sticky='we', row=0, column=0, padx=5, pady=1)
         
         #############
         # Tab: About
@@ -687,7 +708,7 @@ and
 http://browndye.ucsd.edu/
 
 This software is released under the terms of GNU GPL2 license. For \
-more details please see the accompying documentation.
+more details please see the accompanying documentation.
 
 (c) 2016 National Biomedical Computation Resource
 http://nbcr.ucsd.edu/
@@ -703,9 +724,17 @@ http://nbcr.ucsd.edu/
     def getProjectDir(self):
         rndID = random.randint(1000, 9999)
         cwd = os.getcwd()
-        pDir = cwd + '/BD-project-' + str(rndID)
+        pDir = cwd + '/bd-project-' + str(rndID)
         return pDir
     
+    def browseProjectDir(self):
+        d = tkFileDialog.askdirectory(
+            title='Project directory', initialdir='',
+            parent=self.parent)
+        self.projectDir.set(d)
+        os.chdir(self.projectDir.get())
+        return
+
     def createProjectDir(self):
         if os.path.exists(self.projectDir.get()):
             print("This directory already exists!")
@@ -810,11 +839,11 @@ http://nbcr.ucsd.edu/
     def pdb2pqr(self):
         rc = os.system("cp %s ./mol0.pdb" % self.mol0.get())
         if rc > 0:
-            print ("::: Creating mol0.pdb failed!")
+            print("::: Creating mol0.pdb failed!")
             return
         rc = os.system("cp %s ./mol1.pdb" % self.mol1.get())
         if rc > 0:
-            print ("::: Creating mol1.pdb failed!")
+            print("::: Creating mol1.pdb failed!")
             return
         an = ''
         if self.pqr_assign_only.get(): an = '--assign-only'
@@ -1012,7 +1041,7 @@ quit
         command = 'PATH=' + self.bd_path.get() + ':${PATH}' + \
                           ' bd_top' + ' input.xml'
         if (DEBUG > 0): print(command)
-        print("::: Running bd_top ...")
+        print("::: Running bd_top (this will take a couple of minutes) ...")
         rc = self.runcmd(command)
         if rc != 0:
             print("::: Failed: " + command)
@@ -1028,23 +1057,105 @@ quit
         return
 
     def runBD(self):
+        print("::: Starting BrownDye simulation ...")
+        command = 'PATH=' + self.bd_path.get() + ':${PATH}' + \
+                          ' nam_simulation' + \
+                          ' mol0-mol1-simulation.xml >& ' + \
+                          logfile #+ ' & ' 
+        r = RunThread(self.projectDir.get(), command, self.logtxt_ent)
+        r.start()
+        self.notebook.selectpage('Results')
+        self.logtxt_ent.insert('end', "::: Starting BrownDye simulation ...\n")
+        time.sleep(1)
+        tl = MonitorThread(logfile, r, 3600, self.logtxt_ent)
+        tl.start()
         return
 
     def execute(self, result):
-        print 'Exiting BD Plugin ...'
+        print("Exiting BD Plugin ...")
         if __name__ == '__main__':
             self.parent.destroy()
         else:
             self.dialog.withdraw()
-        print 'Done.'
+        print("Done.")
         return
 
+class RunThread(Thread):
+    def __init__ (self, work_dir, command, page):
+	Thread.__init__(self)
+        self.page = page
+        self.command = command
+        if DEBUG > 1: print("%s" %(command))
+	self.work_dir = work_dir
+        if DEBUG > 1: print("Work directory: %s" %(work_dir))
+	self.pid = 0
+        return
+    
+    def run(self):
+	print("::: Project directory: %s" %(self.work_dir))
+	current_dir = os.getcwd()
+	os.chdir(self.work_dir)
+        self.page.yview('moveto', 1.0)
+	#p = subprocess.Popen(self.command, stdout=subprocess.PIPE,
+        #                      stderr=subprocess.PIPE, shell=True)
+	#self.pid = p.pid
+        #time.sleep(10)
+	#(out, err) = p.communicate()
+        self.status, output = commands.getstatusoutput(self.command)
+        self.outlog = output
+        #print (out, err)
+	#try:
+	# self.page.insert('end',"%s %s" % (out, err))
+        # self.page.yview('moveto', 1.0)
+        #except:
+	# self.screwup("Fatal --> No results, so something is wrong")
+   	# return
+        #os.chdir(current_dir)
+        return
+
+class MonitorThread(Thread):
+    def __init__(self, logfile, mythread, timeout, page):
+        Thread.__init__(self)
+        self.logfile = logfile.replace("\\","/")
+        self.page = page
+        if DEBUG > 1: print("::: logfile: " + logfile)
+        if DEBUG > 1: print("::: self.logfile: " + self.logfile)
+        self.mythread = mythread
+        self.timeout = timeout
+    def run(self):
+        seconds = 0
+        readcount = 0 
+        while self.mythread.is_alive() and seconds < self.timeout:
+            if os.path.getsize(self.logfile) > readcount+20:
+                f = open(self.logfile,'r')
+                f.seek(readcount,0)
+                while readcount < os.path.getsize(self.logfile):
+                    logline = f.readline()
+                    if not logline: break
+                    print(logline, end='')
+                    self.page.insert('end', "%s" % logline)
+                    readcount = f.tell()
+                f.close()
+                seconds = seconds+10
+                time.sleep(10)
+                #transfer_status['log'] = 'Running for %d seconds'%seconds
+        time.sleep(5)
+        print("::: BD simulation finished.")
+        self.page.insert('end', "::: BD simulation finished")
+        return
+    
+class StopThread(Thread):
+    def __init__(self, mythread):
+        self.pid = mythread.pid
+        os.system('kill -9 %d' % self.pid)
+        return
+    
 class Psize:
     """
     This is based on pdb2pqr version of psize. All licensing info applies.
     """
     def __init__(self):
-        self.constants = {"CFAC":1.7, "FADD":20, "SPACE":0.50, "GMEMFAC":200, "GMEMCEIL":400,
+        self.constants = {"CFAC":3.0, "FADD":50, "SPACE":0.50, "GMEMFAC":200, "GMEMCEIL":400,
                           "OFAC":0.1, "REDFAC":0.25, "TFAC_ALPHA":9e-5,
                           "TFAC_XEON":3e-4, "TFAC_SPARC": 5e-4}
         self.minlen = [360.0, 360.0, 360.0]
