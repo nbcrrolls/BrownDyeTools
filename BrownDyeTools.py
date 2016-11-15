@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 #-*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-14 14:07:46
+# Last modified: 2016-11-14 17:02:59
 #
 # GNU statement
 #
@@ -40,11 +40,30 @@ if "BD_PATH" in os.environ: BD_PATH = os.environ["BD_PATH"]
 
 
 def __init__(self):
-    """ BD plugin for PyMol
+    """ BrownDye plugin for PyMol
     """
     self.menuBar.addmenuitem('Plugin', 'command',
                              'BrownDye Plugin', label='BrownDye Plugin',
                              command=lambda s=self: BDPlugin(s))
+
+class DummyPymol:
+    class Cmd:
+        def load(self,name,sel=''):
+            pass
+        def get_names(self):
+            return ['mol1','mol2','map1','map2']
+        def get_type(self,thing):
+            if thing.startswith('mol'):
+                return 'object:molecule'
+            else:
+                return 'object:map'
+    cmd = Cmd()
+
+try:
+    import pymol
+except ImportError:
+    print("::: Pymol features not available!")
+    pymol = DummyPymol()
     
 class BDPlugin:
     def __init__(self, app):
@@ -1072,7 +1091,7 @@ quit
         return
 
     def execute(self, result):
-        print("Exiting BD Plugin ...")
+        print("Exiting BrownDye Plugin ...")
         if __name__ == '__main__':
             self.parent.destroy()
         else:
@@ -1140,8 +1159,8 @@ class MonitorThread(Thread):
                 time.sleep(10)
                 #transfer_status['log'] = 'Running for %d seconds'%seconds
         time.sleep(5)
-        print("::: BD simulation finished.")
-        self.page.insert('end', "::: BD simulation finished")
+        print("::: BrownDye simulation finished.")
+        self.page.insert('end', "::: BrownDye simulation finished")
         return
     
 class StopThread(Thread):
