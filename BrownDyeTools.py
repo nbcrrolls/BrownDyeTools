@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 #-*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-14 17:02:59
+# Last modified: 2016-11-15 12:53:07
 #
 # GNU statement
 #
@@ -158,7 +158,7 @@ class BDPlugin:
         self.debyel = Tkinter.DoubleVar()
         self.debyel.set(7.86) #FIXME
         self.ntraj = Tkinter.IntVar()
-        self.ntraj.set(1000)
+        self.ntraj.set(100)
         self.nthreads = Tkinter.IntVar()
         self.nthreads.set(1)
         self.mindx = Tkinter.DoubleVar()
@@ -175,6 +175,9 @@ class BDPlugin:
         self.westeps.set(10000)
         self.maxnsteps = Tkinter.IntVar()
         self.maxnsteps.set(100000)
+
+        self.run_in_background = Tkinter.BooleanVar()
+        self.run_in_background.set(False)
         
         self.pdb_fn        = Tkinter.StringVar()
         self.pymol_sel     = Tkinter.StringVar()
@@ -359,7 +362,7 @@ class BDPlugin:
                                       entry_textvariable=self.fglen0[2],
                                       entry_width=8)
         get_size0_but = Tkinter.Button(group_grids,
-                                       text="Get grid size for mol 0",
+                                       text="Calculate grid size",
                                        command=self.getSizemol0)
 
         label1 = Tkinter.Label(group_grids, text='Molecule 1')
@@ -420,7 +423,7 @@ class BDPlugin:
                                       entry_width=8)
         
         get_size1_but = Tkinter.Button(group_grids,
-                                       text="Get grid size for mol 1",
+                                       text="Calculate grid size",
                                        command=self.getSizemol1)
 
         label0.grid(sticky='we', row=0, column=0, padx=5, pady=10)
@@ -670,7 +673,6 @@ class BDPlugin:
                                        entry_textvariable=self.maxnsteps)
 
         prep_bd_but = Tkinter.Button(page, text="Generate BD input file", command=self.prepBD)
-        run_bd_but = Tkinter.Button(page, text="Start BD simulation", command=self.runBD)
 
         solvent_eps_ent.grid(sticky='we', row=1, column=0, padx=5, pady=1)
         debyel_ent.grid(     sticky='we', row=1, column=1, padx=5, pady=1)
@@ -688,16 +690,28 @@ class BDPlugin:
         maxnsteps_ent.grid(  sticky='we', row=7, column=0, padx=5, pady=1)
 
         prep_bd_but.grid(    sticky='we', row=8, column=0, padx=5, pady=1)
-        run_bd_but.grid(     sticky='we', row=8, column=1, padx=5, pady=1)
 
         ######################
-        # Tab: Results
+        # Tab: BD Simulation
         ######################
-        page = self.notebook.add('Results')
-        group_results = Tkinter.LabelFrame(page, text='Results')
-        group_results.grid(sticky='eswn', row=0, column=0, columnspan=2, padx=10, pady=5)
+        page = self.notebook.add('BD Simulation')
+        group_sim = Tkinter.LabelFrame(page, text='BrownDye Simulation')
+        group_sim.grid(sticky='eswn', row=0, column=0, columnspan=2, padx=10, pady=5)
 
-        self.logtxt_ent = Pmw.ScrolledText(group_results, labelpos='wn',
+        bkgj_cb = Tkinter.Checkbutton(group_sim,
+                                      text='Run job in background', 
+                                      variable=self.run_in_background,
+                                      onvalue=True, offvalue=False)
+
+        run_bd_but = Tkinter.Button(group_sim,
+                                    text="Start BD simulation", command=self.runBD)
+        kill_bd_but = Tkinter.Button(group_sim,
+                                     text="Stop background job", command=self.killBD)
+        self.messagebar = Pmw.MessageBar(group_sim,
+                                         entry_width=40, entry_relief='sunken',
+                                         labelpos='w', label_text='Status:')
+
+        self.logtxt_ent = Pmw.ScrolledText(group_sim, labelpos='wn',
                                       borderframe=5, 
                                       vscrollmode='dynamic',
                                       hscrollmode='dynamic',
@@ -706,7 +720,19 @@ class BDPlugin:
                                       text_background='#000000',
                                       text_foreground='green')
 
-        self.logtxt_ent.grid(sticky='we', row=0, column=0, padx=5, pady=1)
+        bkgj_cb.grid(sticky='w', row=0, column=0, columnspan=2, padx=1, pady=1)
+        run_bd_but.grid(sticky='we', row=1, column=0, padx=5, pady=1)
+        kill_bd_but.grid(sticky='we', row=1, column=1, padx=5, pady=1)
+
+        self.messagebar.grid(sticky='we', row=2, column=0, columnspan=2, padx=5, pady=1)
+        self.logtxt_ent.grid(sticky='we', row=3, column=0, columnspan=2, padx=5, pady=1)
+
+        ######################
+        # Tab: Analysis
+        ######################
+        page = self.notebook.add('Analysis')
+        group_analysis = Tkinter.LabelFrame(page, text='Analysis and Visualization')
+        group_analysis.grid(sticky='eswn', row=0, column=0, columnspan=2, padx=10, pady=5)
         
         #############
         # Tab: About
@@ -1042,8 +1068,10 @@ quit
   <n-we-steps-per-output> %d </n-we-steps-per-output>
   <max-n-steps> %d </max-n-steps>
 
-</root>
+  <trajectory-file> traj </trajectory-file>
+  <n-steps-per-output> 10000 </n-steps-per-output>
 
+</root>
 '''
         fout = open('input.xml', "w")
         fout.write(nam_simulation_template % \
@@ -1077,19 +1105,33 @@ quit
 
     def runBD(self):
         print("::: Starting BrownDye simulation ...")
-        command = 'PATH=' + self.bd_path.get() + ':${PATH}' + \
-                          ' nam_simulation' + \
-                          ' mol0-mol1-simulation.xml >& ' + \
-                          logfile #+ ' & ' 
-        r = RunThread(self.projectDir.get(), command, self.logtxt_ent)
-        r.start()
-        self.notebook.selectpage('Results')
-        self.logtxt_ent.insert('end', "::: Starting BrownDye simulation ...\n")
-        time.sleep(1)
-        tl = MonitorThread(logfile, r, 3600, self.logtxt_ent)
-        tl.start()
+        command = self.bd_path.get() +'/nam_simulation' + \
+                  ' mol0-mol1-simulation.xml >& ' + \
+                  logfile #+ ' & ' 
+        if self.run_in_background.get():
+            p = subprocess.Popen(" nohup " + command, shell=True)
+            self.jobPID = p.pid
+            self.notebook.selectpage('BD Simulation')
+            self.logtxt_ent.insert('end', "::: Starting BrownDye simulation in background.\n")
+            self.logtxt_ent.insert('end', "::: Job PID: " + str(self.jobPID) + " \n")
+        else:
+            p = RunThread(self.projectDir.get(), command, self.logtxt_ent)
+            p.start()
+            self.notebook.selectpage('BD Simulation')
+            self.logtxt_ent.insert('end', "::: Starting BrownDye simulation ...\n")
+            time.sleep(1)
+            tl = MonitorThread(logfile, p, 3600, self.logtxt_ent,
+                               self.messagebar, self.bd_path.get())
+            tl.start()
         return
 
+    def killBD(self):
+        try:
+            os.system('pkill -9 -P %d' % self.jobPID)
+        except AttributeError:
+            print("No background job running!")
+        return
+   
     def execute(self, result):
         print("Exiting BrownDye Plugin ...")
         if __name__ == '__main__':
@@ -1133,10 +1175,12 @@ class RunThread(Thread):
         return
 
 class MonitorThread(Thread):
-    def __init__(self, logfile, mythread, timeout, page):
+    def __init__(self, logfile, mythread, timeout, page, messagebar, bd_path):
         Thread.__init__(self)
         self.logfile = logfile.replace("\\","/")
         self.page = page
+        self.messagebar = messagebar
+        self.bd_path = bd_path
         if DEBUG > 1: print("::: logfile: " + logfile)
         if DEBUG > 1: print("::: self.logfile: " + self.logfile)
         self.mythread = mythread
@@ -1147,6 +1191,8 @@ class MonitorThread(Thread):
         while self.mythread.is_alive() and seconds < self.timeout:
             if os.path.getsize(self.logfile) > readcount+20:
                 f = open(self.logfile,'r')
+                #res = open('results.xml', 'r')
+                
                 f.seek(readcount,0)
                 while readcount < os.path.getsize(self.logfile):
                     logline = f.readline()
@@ -1158,9 +1204,14 @@ class MonitorThread(Thread):
                 seconds = seconds+10
                 time.sleep(10)
                 #transfer_status['log'] = 'Running for %d seconds'%seconds
+            command = 'cat results.xml | ' + self.bd_path + '/compute_rate_constant'
+            status, output = commands.getstatusoutput(command)
+            self.messagebar.message('state', output)
+            time.sleep(5)
+            
         time.sleep(5)
         print("::: BrownDye simulation finished.")
-        self.page.insert('end', "::: BrownDye simulation finished")
+        self.page.insert('end', "::: BrownDye simulation finished\n")
         return
     
 class StopThread(Thread):
