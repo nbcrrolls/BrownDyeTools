@@ -1,14 +1,14 @@
 #!/usr/bin/env python2
 #-*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-16 09:51:10
+# Last modified: 2016-11-16 13:41:08
 #
 # FIXME GNU statement
 #
 
 from __future__ import print_function
 import os, subprocess, commands
-import sys, string
+import sys, string, filecmp, shutil
 #from sys import stdout
 #from math import log
 import random
@@ -29,7 +29,8 @@ __version__ = "0.0.1"
 PDB2PQR_PATH = ''
 APBS_PATH = ''
 BD_PATH = ''
-logfile = 'LOGFILE'
+LOGFILE = 'LOGFILE'
+DEFAULT_CONTACTS_FILE = 'protein-protein-contacts-def.xml'
 
 if DEBUG > 0:
     PDB2PQR_PATH = '/opt/pdb2pqr-linux-bin64-2.1.0/'
@@ -63,7 +64,7 @@ class DummyPymol(object):
 try:
     import pymol
 except ImportError:
-    print("::: Pymol features not available!")
+    print("::: Pymol import failed - Pymol features not available!")
     pymol = DummyPymol()
     
 class BDPlugin(object):
@@ -73,6 +74,7 @@ class BDPlugin(object):
         self.createGUI()
         
     def createGUI(self):
+        """The main GUI class - sets up all GUI elements."""
         self.dialog = Pmw.Dialog(self.parent, buttons=('Exit',),
                                  title='BrownDye Plugin for PyMOL',
                                 command=self.execute)
@@ -100,26 +102,26 @@ class BDPlugin(object):
         self.pqr_ff.set('parse')
 
         # APBS parameters and defaults
-        self.dime0 = [Tkinter.IntVar()] * 3
+        self.dime0 = [Tkinter.IntVar() for _ in range(3)]
         [self.dime0[x].set(0) for x in range(3)]
-        self.cglen0 = [Tkinter.DoubleVar()] * 3
+        self.cglen0 = [Tkinter.DoubleVar() for _ in range(3)]
         [self.cglen0[x].set(0.0) for x in range(3)]
-        self.fglen0 = [Tkinter.DoubleVar()] * 3
+        self.fglen0 = [Tkinter.DoubleVar() for _ in range(3)]
         [self.fglen0[x].set(0.0) for x in range(3)]
-        self.dime1 = [Tkinter.IntVar()] * 3
+        self.dime1 = [Tkinter.IntVar() for _ in range(3)]
         [self.dime1[x].set(0) for x in range(3)]
-        self.cglen1 = [Tkinter.DoubleVar()] * 3
+        self.cglen1 = [Tkinter.DoubleVar() for _ in range(3)]
         [self.cglen1[x].set(0.0) for x in  range(3)]
-        self.fglen1 = [Tkinter.DoubleVar()] * 3
+        self.fglen1 = [Tkinter.DoubleVar() for _ in range(3)]
         [self.fglen1[x].set(0.0) for x in range(3)]
 
         self.apbs_mode = Tkinter.StringVar()
         self.apbs_mode.set('lpbe')
         self.bcfl = Tkinter.StringVar()
         self.bcfl.set('sdh')
-        self.ion_charge = [Tkinter.IntVar()] * 2
-        self.ion_conc = [Tkinter.DoubleVar()] * 2
-        self.ion_rad = [Tkinter.DoubleVar()] * 2
+        self.ion_charge = [Tkinter.IntVar() for _ in range(2)]
+        self.ion_conc = [Tkinter.DoubleVar() for _ in range(2)]
+        self.ion_rad =  [Tkinter.DoubleVar() for _ in range(2)]
         self.ion_charge[0].set(1)
         self.ion_charge[1].set(-1)
         [self.ion_conc[x].set(0.15) for x in range(2)] 
@@ -143,8 +145,10 @@ class BDPlugin(object):
         self.system_temp.set(298.15)
 
         # reaction criteria
-        self.contacts = Tkinter.StringVar()
-        self.contacts.set('protein-protein-contacts.xml') # FIXME
+        self.contacts_f = Tkinter.StringVar()
+        self.contacts_f.set('protein-protein-contacts.xml') # FIXME
+        self.default_contacts_f = Tkinter.BooleanVar()
+        self.default_contacts_f.set(False)
         self.rxn_distance = Tkinter.DoubleVar()
         self.rxn_distance.set(5.0)
         self.npairs= Tkinter.IntVar()
@@ -191,6 +195,11 @@ class BDPlugin(object):
         self.cleanup_saved_pymol_sel = Tkinter.BooleanVar()
         self.cleanup_saved_pymol_sel.set(True) # by default, clean up
 
+        # Analysis
+        self.traj_index_f = Tkinter.StringVar()
+
+
+        # Main code
         w = Tkinter.Label(self.dialog.interior(),
                           text = ('\nBrownDye Plugin for PyMOL\n'
                                   'Version %s, NBCR 2016\n\n'
@@ -476,7 +485,7 @@ class BDPlugin(object):
                                         entry_textvariable=self.interior_dielectric,
                                         entry_width=10)
         ion1_charge_ent = Pmw.EntryField(group_apbs, labelpos='w',
-                                         label_text='Ion 1 charge: ',
+                                         label_text='Ion(1) charge: ',
                                          value=self.ion_charge[0].get(),
                                          validate={'validator':'integer', 'min':-2},
                                          entry_textvariable=self.ion_charge[0],
@@ -494,7 +503,7 @@ class BDPlugin(object):
                                       entry_textvariable=self.ion_rad[0],
                                       entry_width=5)
         ion2_charge_ent = Pmw.EntryField(group_apbs, labelpos='w',
-                                         label_text='Ion 2 charge: ',
+                                         label_text='Ion(2) charge: ',
                                          value=self.ion_charge[1].get(),
                                          validate={'validator':'integer', 'min':-2},
                                          entry_textvariable=self.ion_charge[1],
@@ -559,17 +568,17 @@ class BDPlugin(object):
         swin_ent.grid(       sticky='we', row=4, column=0, padx=5, pady=1)
         temp_ent.grid(       sticky='we', row=5, column=0, padx=5, pady=1)
 
-        ion1_charge_ent.grid( sticky='we', row=6, column=0, padx=5, pady=1)
-        ion1_conc_ent.grid( sticky='we', row=6, column=1, padx=5, pady=1)
-        ion1_rad_ent.grid(  sticky='we', row=6, column=2, padx=5, pady=1)
+        ion1_charge_ent.grid(sticky='we', row=6, column=0, padx=5, pady=1)
+        ion1_conc_ent.grid(  sticky='we', row=6, column=1, padx=5, pady=1)
+        ion1_rad_ent.grid(   sticky='we', row=6, column=2, padx=5, pady=1)
         ion2_charge_ent.grid(sticky='we', row=7, column=0, padx=5, pady=1)
-        ion2_conc_ent.grid(sticky='we', row=7, column=1, padx=5, pady=1)
-        ion2_rad_ent.grid( sticky='we', row=7, column=2, padx=5, pady=1)
+        ion2_conc_ent.grid(  sticky='we', row=7, column=1, padx=5, pady=1)
+        ion2_rad_ent.grid(   sticky='we', row=7, column=2, padx=5, pady=1)
 
-        apbs_mode_ent.grid(  sticky='we', row=0, column=1, columnspan=2, padx=5, pady=1)
-        bcfl_ent.grid(              sticky='we', row=1, columnspan=2, column=1, padx=5, pady=1)
-        chgm_ent.grid(              sticky='we', row=2, columnspan=2, column=1, padx=5, pady=1)
-        srfm_ent.grid(              sticky='we', row=3, columnspan=2, column=1, padx=5, pady=1)
+        apbs_mode_ent.grid(sticky='we', row=0, column=1, columnspan=2, padx=5, pady=1)
+        bcfl_ent.grid(     sticky='we', row=1, column=1, columnspan=2, padx=5, pady=1)
+        chgm_ent.grid(     sticky='we', row=2, column=1, columnspan=2, padx=5, pady=1)
+        srfm_ent.grid(     sticky='we', row=3, column=1, columnspan=2, padx=5, pady=1)
 
         run_apbs_but.grid(sticky='we', row=8, column=0, columnspan=3, padx=5, pady=1)
 
@@ -582,9 +591,13 @@ class BDPlugin(object):
 
         contacts_ent = Pmw.EntryField(group_rxn,
                                       label_text='Contacts file:', labelpos='w',
-                                      entry_textvariable=self.contacts, entry_width=50)
+                                      entry_textvariable=self.contacts_f, entry_width=50)
         contacts_but = Tkinter.Button(group_rxn, text = 'Browse...',
                                       command=self.getContacts)
+        def_contacts_but = Tkinter.Checkbutton(group_rxn,
+                                               text='or use default contacts file ',
+                                               variable=self.default_contacts_f,
+                                               onvalue=True, offvalue=False)
         rxn_distance_ent = Pmw.EntryField(group_rxn, labelpos='wn',
                                           label_text='Reaction distance: ',
                                           value=self.rxn_distance.get(),
@@ -599,6 +612,7 @@ class BDPlugin(object):
 
         contacts_ent.grid(    sticky='we', row=0, column=0, padx=5, pady=1)
         contacts_but.grid(    sticky='e',  row=0, column=1, padx=5, pady=1)
+        def_contacts_but.grid(sticky='e',  row=0, column=2, padx=5, pady=1)
         rxn_distance_ent.grid(sticky='we', row=1, column=0, padx=5, pady=1)
         npairs_ent.grid(      sticky='we', row=2, column=0, padx=5, pady=1)
         run_rxn_crit.grid(    sticky='we', row=3, column=0, padx=5, pady=1)
@@ -711,9 +725,20 @@ class BDPlugin(object):
                                     text="Start BD simulation", command=self.runBD)
         kill_bd_but = Tkinter.Button(group_sim,
                                      text="Stop background job", command=self.killBD)
-        self.messagebar = Pmw.MessageBar(group_sim,
-                                         entry_width=40, entry_relief='sunken',
-                                         labelpos='w', label_text='Status:')
+        self.messagebar1 = Pmw.MessageBar(group_sim,
+                                          entry_width=10, entry_relief='sunken',
+                                          labelpos='w',
+                                          label_text='Trajectories:')
+        self.messagebar2 = Pmw.MessageBar(group_sim,
+                                          entry_width=20, entry_relief='sunken',
+                                          labelpos='w',
+                                          label_text='Completed events / escaped / stuck:')
+
+        self.messagebar3 = Pmw.MessageBar(group_sim,
+                                          entry_width=20, entry_relief='sunken',
+                                          labelpos='w',
+                                          label_text=('Calculated reaction rate '
+                                                      'and probability:'))
 
         self.logtxt_ent = Pmw.ScrolledText(group_sim, labelpos='wn',
                                       borderframe=5, 
@@ -728,8 +753,10 @@ class BDPlugin(object):
         run_bd_but.grid(sticky='we', row=1, column=0, padx=5, pady=1)
         kill_bd_but.grid(sticky='we', row=1, column=1, padx=5, pady=1)
 
-        self.messagebar.grid(sticky='we', row=2, column=0, columnspan=2, padx=5, pady=1)
-        self.logtxt_ent.grid(sticky='we', row=3, column=0, columnspan=2, padx=5, pady=1)
+        self.messagebar1.grid(sticky='we', row=2, column=0, columnspan=1, padx=5, pady=1)
+        self.messagebar2.grid(sticky='we', row=2, column=1, columnspan=1, padx=5, pady=1)
+        self.messagebar3.grid(sticky='we', row=3, column=0, columnspan=2, padx=5, pady=1)
+        self.logtxt_ent.grid(sticky='we', row=4, column=0, columnspan=2, padx=5, pady=1)
 
         ######################
         # Tab: Analysis
@@ -737,7 +764,18 @@ class BDPlugin(object):
         page = self.notebook.add('Analysis')
         group_analysis = Tkinter.LabelFrame(page, text='Analysis and Visualization')
         group_analysis.grid(sticky='eswn', row=0, column=0, columnspan=2, padx=10, pady=5)
-        
+
+        load_traj_ent = Pmw.EntryField(group_analysis,
+                                       label_text='Select trajectory index file:',
+                                       labelpos='w',
+                                       entry_textvariable=self.traj_index_f,
+                                       entry_width=50)
+        load_traj_but = Tkinter.Button(group_analysis, text = 'Browse...',
+                                       command=self.loadTrajectoryIndex)
+
+        load_traj_ent.grid(    sticky='we', row=0, column=0, padx=5, pady=1)
+        load_traj_but.grid(    sticky='e',  row=0, column=1, padx=5, pady=1)
+
         #############
         # Tab: About
         #############
@@ -766,20 +804,26 @@ class BDPlugin(object):
         return
 
     def getProjectDir(self):
+        """Generate a radnom project directory name."""
         rndID = random.randint(1000, 9999)
         cwd = os.getcwd()
         pDir = '%s/bd-project-%d' % (cwd, rndID)
         return pDir
     
     def browseProjectDir(self):
+        """Browse for project directory and chdir there."""
         d = tkFileDialog.askdirectory(
             title='Project directory', initialdir='',
             parent=self.parent)
         self.projectDir.set(d)
-        os.chdir(self.projectDir.get())
+        try:
+            os.chdir(self.projectDir.get())
+        except OSError:
+            print("::: %s No such file or directory." % self.projectDir.get())
         return
 
     def createProjectDir(self):
+        """Create project directory. """
         if os.path.exists(self.projectDir.get()):
             print("This directory already exists!")
             return
@@ -788,13 +832,14 @@ class BDPlugin(object):
         return
 
     def runcmd(self, command):
+        """Generic wrapper for running arbitrary shell commands."""
         p = subprocess.Popen(command, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, shell=True)
         p.wait()
         (out,err) = p.communicate();
-        if (DEBUG > 2): print("returncode = %d" % p.returncode)
-        if (DEBUG > 2): print("stdout:\n%s\n" % out)
-        if (DEBUG > 2): print("stderr:\n%s\n" % err)
+        if DEBUG > 2: print("returncode = %d" % p.returncode)
+        if DEBUG > 2: print("stdout:\n%s\n" % out)
+        if DEBUG > 2: print("stderr:\n%s\n" % err)
         if p.returncode > 0:
             sys.stderr.write("::: Non-zero return code!\n") 
             sys.stderr.write("::: Failed command: \n\n")
@@ -841,6 +886,7 @@ class BDPlugin(object):
         return
 
     def getSizemol0(self):
+        """Calculate APBS grid dimensions for molecule 0."""
         pqr_filename = 'mol0.pqr'
         if not os.path.isfile(pqr_filename):
             print("::: %s does not exist!" % pqr_filename)
@@ -857,6 +903,7 @@ class BDPlugin(object):
         return
 
     def getSizemol1(self):
+        """Calculate APBS grid dimensions for molecule 1."""
         pqr_filename = 'mol1.pqr'
         if not os.path.isfile(pqr_filename):
             print("::: %s does not exist!" % pqr_filename)
@@ -873,37 +920,47 @@ class BDPlugin(object):
         return
     
     def getContacts(self):
+        """Get contacts file."""
         file_name = tkFileDialog.askopenfilename(
             title='Contacts File', initialdir='',
             filetypes=[('xml files', '*.xml'), ('all files', '*')],
             parent=self.parent)
-        self.contacts.set(file_name)
+        self.contacts_f.set(file_name)
         return
     
     def pdb2pqr(self):
-        rc = os.system("cp %s ./mol0.pdb" % self.mol0.get())
-        if rc > 0:
-            print("::: Creating mol0.pdb failed!")
-            return
-        rc = os.system("cp %s ./mol1.pdb" % self.mol1.get())
-        if rc > 0:
-            print("::: Creating mol1.pdb failed!")
-            return
-        an = ''
-        if self.pqr_assign_only.get(): an = '--assign-only'
+        """Convert pdb to pqr."""
+        if not filecmp.cmp(self.mol0.get(), 'mol0.pdb'):
+            try:
+                shutil.copyfile(self.mol0.get(), 'mol0.pdb')
+            except:
+                print("::: Creating of mol0.pdb failed!")
+                return
+        if not filecmp.cmp(self.mol1.get(), 'mol1.pdb'):
+            try:
+                shutil.copyfile(self.mol1.get(), 'mol1.pdb')
+            except:
+                print("::: Creating of mol1.pdb failed!")
+                return
+        assign_only = ''
+        if self.pqr_assign_only.get(): assign_only = '--assign-only'
         pqr_options = ('%s %s --ff=%s' %
-                       (an, self.pdb2pqr_opt.get(), self.pqr_ff.get()))
+                       (assign_only, self.pdb2pqr_opt.get(), self.pqr_ff.get()))
         for i in ['mol0', 'mol1']:
             command = ('%s/pdb2pqr %s %s.pdb %s.pqr' %
                        (self.pdb2pqr_path.get(), pqr_options, i, i))
-            if (DEBUG > 0): print(command)
+            if DEBUG > 2: print(command)
             print("::: Running pdb2pqr on %s ..." % i)
             rc = self.runcmd(command)
-            if rc != 0:
+            if rc == 0:
+                print("::: Done.")
+            else:
                 print("::: Command failed: %s" % command)
+
         return
 
     def runAPBS(self):
+        """Run APBS calculations on molecule 0 and molecule 1"""
         apbs_template = """# APBS template for BD grids
 read
     mol pqr %s
@@ -976,14 +1033,18 @@ quit
                              dx_filename)))
 
             command = '%s/apbs %s.in' % (self.apbs_path.get(), i)
-            if (DEBUG > 0):
+            if DEBUG > 2:
                 print(command)
                 print(grid_points)
                 print(cglen)
                 print(fglen)
             print("::: Running apbs on %s ... " % i)
+            gmem = 200.0 * grid_points[0] * grid_points[1] * grid_points[2] / 1024 / 1024
+            print("::: Estimated memory requirements: %.3f MB" % gmem)
             rc = self.runcmd(command)
-            if rc != 0:
+            if rc == 0:
+                print("::: Done.")
+            else:
                 print("::: Failed: %s" % command)
 
         return
@@ -993,38 +1054,302 @@ quit
         for i in ['mol0', 'mol1']:
             command = ('%s/pqr2xml < %s.pqr > %s-atoms.pqrxml'
                        % (self.bd_path.get(), i, i))
-            if (DEBUG > 0): print(command)
+            if DEBUG > 2: print(command)
             print("::: Running pqr2xml on %s ..." % i)
             rc = self.runcmd(command)
-            if rc != 0:
+            if rc == 0:
+                print("::: Done.")
+            else:
                 print("::: Failed: %s" % command)
         return
-                
+
+    def create_default_contacts_file(self):
+        contacts_template = """
+<!-- Default protein/protein contacts file -->
+<contacts>
+  <combinations>
+    <molecule0>
+      <contact>
+        <atom> SG </atom> <residue> CYS </residue>
+      </contact>
+      <contact>
+        <atom> NE2 </atom> <residue> HIS </residue>
+      </contact>
+      <contact>
+        <atom> ND1 </atom> <residue> HIS </residue>
+      </contact>
+      <contact>
+        <atom> NZ </atom> <residue> LYS </residue>
+      </contact>
+      <contact>
+        <atom> ND2 </atom> <residue> ASN </residue>
+      </contact>
+      <contact>
+        <atom> NE2 </atom> <residue> GLN </residue>
+      </contact>
+      <contact>
+        <atom> NH1 </atom> <residue> ARG </residue>
+      </contact>
+      <contact>
+        <atom> NZ </atom> <residue> ARG </residue>
+      </contact>
+      <contact>
+        <atom> NH2 </atom> <residue> ARG </residue>
+      </contact>
+      <contact>
+        <atom> OG </atom> <residue> SER </residue>
+      </contact>
+      <contact>
+        <atom> OH </atom> <residue> TYR </residue>
+      </contact>
+      <contact>
+        <atom> NE1 </atom> <residue> TRP </residue>
+      </contact>
+
+      <contact> <atom> N </atom> <residue> ALA </residue> </contact>   
+      <contact> <atom> N </atom> <residue> ARG </residue> </contact> 
+      <contact> <atom> N </atom> <residue> ASN </residue> </contact>  
+      <contact> <atom> N </atom> <residue> ASP </residue> </contact> 
+      <contact> <atom> N </atom> <residue> CYS </residue> </contact>
+      <contact> <atom> N </atom> <residue> GLU </residue> </contact>
+      <contact> <atom> N </atom> <residue> GLN </residue> </contact>
+      <contact> <atom> N </atom> <residue> GLY </residue> </contact>
+      <contact> <atom> N </atom> <residue> HIS </residue> </contact>
+      <contact> <atom> N </atom> <residue> ILE </residue> </contact>
+      <contact> <atom> N </atom> <residue> LEU </residue> </contact>
+      <contact> <atom> N </atom> <residue> LYS </residue> </contact>
+      <contact> <atom> N </atom> <residue> MET </residue> </contact>
+      <contact> <atom> N </atom> <residue> PHE </residue> </contact>
+      <contact> <atom> N </atom> <residue> PRO </residue> </contact>
+      <contact> <atom> N </atom> <residue> SER </residue> </contact>
+      <contact> <atom> N </atom> <residue> THR </residue> </contact>
+      <contact> <atom> N </atom> <residue> TRP </residue> </contact>
+      <contact> <atom> N </atom> <residue> TYR </residue> </contact>
+      <contact> <atom> N </atom> <residue> VAL </residue> </contact>
+    </molecule0>
+    <molecule1>
+      <contact>
+        <atom> SG </atom> <residue> CYS </residue>
+      </contact>
+      <contact>
+        <atom> OD1 </atom> <residue> ASP </residue>
+      </contact>
+      <contact>
+        <atom> OD2 </atom> <residue> ASP </residue>
+      </contact>
+      <contact>
+        <atom> OE1 </atom> <residue> GLU </residue>
+      </contact>
+      <contact>
+        <atom> OE2 </atom> <residue> GLU </residue>
+      </contact>
+      <contact>
+        <atom> ND1 </atom> <residue> HIS </residue>
+      </contact>
+      <contact>
+        <atom> SD </atom> <residue> MET </residue>
+      </contact>
+      <contact>
+        <atom> OD1 </atom> <residue> ASN </residue>
+      </contact>
+      <contact>
+        <atom> OE1 </atom> <residue> GLN</residue>
+      </contact>
+      <contact>
+        <atom> OG </atom> <residue> SER </residue>
+      </contact>
+      <contact>
+        <atom> OG1 </atom> <residue> THR </residue>
+      </contact>
+      <contact>
+        <atom> OH </atom> <residue> TYR </residue>
+      </contact>
+
+      <contact> <atom> O </atom> <residue> ALA </residue> </contact>   
+      <contact> <atom> O </atom> <residue> ARG </residue> </contact> 
+      <contact> <atom> O </atom> <residue> ASN </residue> </contact>  
+      <contact> <atom> O </atom> <residue> ASP </residue> </contact> 
+      <contact> <atom> O </atom> <residue> CYS </residue> </contact>
+      <contact> <atom> O </atom> <residue> GLU </residue> </contact>
+      <contact> <atom> O </atom> <residue> GLN </residue> </contact>
+      <contact> <atom> O </atom> <residue> GLY </residue> </contact>
+      <contact> <atom> O </atom> <residue> HIS </residue> </contact>
+      <contact> <atom> O </atom> <residue> ILE </residue> </contact>
+      <contact> <atom> O </atom> <residue> LEU </residue> </contact>
+      <contact> <atom> O </atom> <residue> LYS </residue> </contact>
+      <contact> <atom> O </atom> <residue> MET </residue> </contact>
+      <contact> <atom> O </atom> <residue> PHE </residue> </contact>
+      <contact> <atom> O </atom> <residue> PRO </residue> </contact>
+      <contact> <atom> O </atom> <residue> SER </residue> </contact>
+      <contact> <atom> O </atom> <residue> THR </residue> </contact>
+      <contact> <atom> O </atom> <residue> TRP </residue> </contact>
+      <contact> <atom> O </atom> <residue> TYR </residue> </contact>
+      <contact> <atom> O </atom> <residue> VAL </residue> </contact>
+    </molecule1>
+  </combinations>
+  <combinations>
+    <molecule1>
+      <contact>
+        <atom> SG </atom> <residue> CYS </residue>
+      </contact>
+      <contact>
+        <atom> NE2 </atom> <residue> HIS </residue>
+      </contact>
+      <contact>
+        <atom> ND1 </atom> <residue> HIS </residue>
+      </contact>
+      <contact>
+        <atom> NZ </atom> <residue> LYS </residue>
+      </contact>
+      <contact>
+        <atom> ND2 </atom> <residue> ASN </residue>
+      </contact>
+      <contact>
+        <atom> NE2 </atom> <residue> GLN </residue>
+      </contact>
+      <contact>
+        <atom> NH1 </atom> <residue> ARG </residue>
+      </contact>
+      <contact>
+        <atom> NZ </atom> <residue> ARG </residue>
+      </contact>
+      <contact>
+        <atom> NH2 </atom> <residue> ARG </residue>
+      </contact>
+      <contact>
+        <atom> OG </atom> <residue> SER </residue>
+      </contact>
+      <contact>
+        <atom> OH </atom> <residue> TYR </residue>
+      </contact>
+      <contact>
+        <atom> NE1 </atom> <residue> TRP </residue>
+      </contact>
+
+      <contact> <atom> N </atom> <residue> ALA </residue> </contact>   
+      <contact> <atom> N </atom> <residue> ARG </residue> </contact> 
+      <contact> <atom> N </atom> <residue> ASN </residue> </contact>  
+      <contact> <atom> N </atom> <residue> ASP </residue> </contact> 
+      <contact> <atom> N </atom> <residue> CYS </residue> </contact>
+      <contact> <atom> N </atom> <residue> GLU </residue> </contact>
+      <contact> <atom> N </atom> <residue> GLN </residue> </contact>
+      <contact> <atom> N </atom> <residue> GLY </residue> </contact>
+      <contact> <atom> N </atom> <residue> HIS </residue> </contact>
+      <contact> <atom> N </atom> <residue> ILE </residue> </contact>
+      <contact> <atom> N </atom> <residue> LEU </residue> </contact>
+      <contact> <atom> N </atom> <residue> LYS </residue> </contact>
+      <contact> <atom> N </atom> <residue> MET </residue> </contact>
+      <contact> <atom> N </atom> <residue> PHE </residue> </contact>
+      <contact> <atom> N </atom> <residue> PRO </residue> </contact>
+      <contact> <atom> N </atom> <residue> SER </residue> </contact>
+      <contact> <atom> N </atom> <residue> THR </residue> </contact>
+      <contact> <atom> N </atom> <residue> TRP </residue> </contact>
+      <contact> <atom> N </atom> <residue> TYR </residue> </contact>
+      <contact> <atom> N </atom> <residue> VAL </residue> </contact>
+    </molecule1>
+    <molecule0>
+      <contact>
+        <atom> SG </atom> <residue> CYS </residue>
+      </contact>
+      <contact>
+        <atom> OD1 </atom> <residue> ASP </residue>
+      </contact>
+      <contact>
+        <atom> OD2 </atom> <residue> ASP </residue>
+      </contact>
+      <contact>
+        <atom> OE1 </atom> <residue> GLU </residue>
+      </contact>
+      <contact>
+        <atom> OE2 </atom> <residue> GLU </residue>
+      </contact>
+      <contact>
+        <atom> ND1 </atom> <residue> HIS </residue>
+      </contact>
+      <contact>
+        <atom> SD </atom> <residue> MET </residue>
+      </contact>
+      <contact>
+        <atom> OD1 </atom> <residue> ASN </residue>
+      </contact>
+      <contact>
+        <atom> OE1 </atom> <residue> GLN</residue>
+      </contact>
+      <contact>
+        <atom> OG </atom> <residue> SER </residue>
+      </contact>
+      <contact>
+        <atom> OG1 </atom> <residue> THR </residue>
+      </contact>
+      <contact>
+        <atom> OH </atom> <residue> TYR </residue>
+      </contact>
+
+      <contact> <atom> O </atom> <residue> ALA </residue> </contact>   
+      <contact> <atom> O </atom> <residue> ARG </residue> </contact> 
+      <contact> <atom> O </atom> <residue> ASN </residue> </contact>  
+      <contact> <atom> O </atom> <residue> ASP </residue> </contact> 
+      <contact> <atom> O </atom> <residue> CYS </residue> </contact>
+      <contact> <atom> O </atom> <residue> GLU </residue> </contact>
+      <contact> <atom> O </atom> <residue> GLN </residue> </contact>
+      <contact> <atom> O </atom> <residue> GLY </residue> </contact>
+      <contact> <atom> O </atom> <residue> HIS </residue> </contact>
+      <contact> <atom> O </atom> <residue> ILE </residue> </contact>
+      <contact> <atom> O </atom> <residue> LEU </residue> </contact>
+      <contact> <atom> O </atom> <residue> LYS </residue> </contact>
+      <contact> <atom> O </atom> <residue> MET </residue> </contact>
+      <contact> <atom> O </atom> <residue> PHE </residue> </contact>
+      <contact> <atom> O </atom> <residue> PRO </residue> </contact>
+      <contact> <atom> O </atom> <residue> SER </residue> </contact>
+      <contact> <atom> O </atom> <residue> THR </residue> </contact>
+      <contact> <atom> O </atom> <residue> TRP </residue> </contact>
+      <contact> <atom> O </atom> <residue> TYR </residue> </contact>
+      <contact> <atom> O </atom> <residue> VAL </residue> </contact>
+    </molecule0>
+  </combinations>
+</contacts>
+        """
+        fout = DEFAULT_CONTACTS_FILE
+        with open(fout, 'w') as f:
+            f.write(contacts_template)
+        return
+
     def make_rxn_criteria(self):
+        """Create rxn criteria files."""
+        if self.default_contacts_f.get():
+            self.create_default_contacts_file()
+            self.contacts_f.set(DEFAULT_CONTACTS_FILE)
+        if not os.path.isfile(self.contacts_f.get()):
+            print("::: File not found: %s" % self.contacts_f.get())
+            return
         command = ('%s/make_rxn_pairs '
                    '-nonred -mol0 mol0-atoms.pqrxml -mol1 mol1-atoms.pqrxml '
-                   '-ctypes %s  -dist %s > mol0-mol1-rxn-pairs.xml'
-                   % (self.bd_path.get(), self.contacts.get(),
-                      str(self.rxn_distance.get())))
-        if (DEBUG > 0): print(command)
+                   '-ctypes %s  -dist %f > mol0-mol1-rxn-pairs.xml'
+                   % (self.bd_path.get(), self.contacts_f.get(),
+                      self.rxn_distance.get()))
+        if DEBUG > 2: print(command)
         print("::: Running make_rxn_pairs ...")
         rc = self.runcmd(command)
-        if rc != 0:
+        if rc == 0:
+            print("::: Done.")
+        else:
             print("::: Failed: %s" % command)
         command =('%s/make_rxn_file '
-                  '-pairs mol0-mol1-rxn-pairs.xml -distance %s '
-                  ' -nneeded %s > mol0-mol1-rxns.xml'
-                  % (self.bd_path.get(), str(self.rxn_distance.get()),
-                  str(self.npairs.get())))
-        if (DEBUG > 0): print(command)
+                  '-pairs mol0-mol1-rxn-pairs.xml -distance %f '
+                  ' -nneeded %d > mol0-mol1-rxns.xml'
+                  % (self.bd_path.get(), self.rxn_distance.get(),
+                     self.npairs.get()))
+        if DEBUG > 2: print(command)
         print("::: Running make_rxn_file ...")
         rc = self.runcmd(command)
-        if rc != 0:
+        if rc == 0:
+            print("::: Done.")
+        else:
             print("::: Failed: %s" % command)
         return
             
     def prepareInputFile(self):
-        """Creat BD input file."""
+        """Create BD input file."""
         nam_simulation_template = """
 <root>
 
@@ -1093,10 +1418,12 @@ quit
         # FIXME check for .dx files
         command = ('PATH=%s:${PATH} bd_top input.xml'
                    % self.bd_path.get())
-        if (DEBUG > 0): print(command)
+        if DEBUG > 2: print(command)
         print("::: Running bd_top (this will take a couple of minutes) ...")
         rc = self.runcmd(command)
-        if rc != 0:
+        if rc == 0:
+            print("::: Done.")
+        else:
             print("::: Failed: %s" % command)
         return
 
@@ -1110,9 +1437,10 @@ quit
         return
 
     def runBD(self):
+        """Start BrownDye simulation either in foreground or background """
         print("::: Starting BrownDye simulation ...")
         command = ('%s/nam_simulation mol0-mol1-simulation.xml >& %s'
-                   % (self.bd_path.get(), logfile))
+                   % (self.bd_path.get(), LOGFILE))
         if self.run_in_background.get():
             p = subprocess.Popen(" nohup %s" % command, shell=True)
             self.jobPID = p.pid
@@ -1125,19 +1453,31 @@ quit
             self.notebook.selectpage('BD Simulation')
             self.logtxt_ent.insert('end', "::: Starting BrownDye simulation ...\n")
             time.sleep(1)
-            tl = MonitorThread(logfile, p, 3600, self.logtxt_ent,
-                               self.messagebar, self.bd_path.get())
+            tl = MonitorThread(LOGFILE, p, 3600, self.ntraj.get(), self.logtxt_ent,
+                               self.messagebar1, self.messagebar2,
+                               self.messagebar3, self.bd_path.get())
             tl.start()
         return
 
     def killBD(self):
+        """Terminate background BD job, if exists."""
         try:
             os.system('pkill -9 -P %d' % self.jobPID)
         except AttributeError:
             print("No background job running!")
         return
-   
+
+    def loadTrajectoryIndex(self):
+        """Load trajectory index file."""
+        file_name = tkFileDialog.askopenfilename(
+            title='Trajectory index File', initialdir='',
+            filetypes=[('xml files', '*.xml'), ('all files', '*')],
+            parent=self.parent)
+        self.traj_index_f.set(file_name)
+        return
+    
     def execute(self, result):
+        """Quid BD plugin."""
         print("Exiting BrownDye Plugin ...")
         if __name__ == '__main__':
             self.parent.destroy()
@@ -1149,19 +1489,19 @@ quit
 class RunThread(Thread):
     """ Thread management class."""
     def __init__ (self, work_dir, command, page):
-	Thread.__init__(self)
+        Thread.__init__(self)
         self.page = page
         self.command = command
-        if DEBUG > 1: print("%s" % (command))
-	self.work_dir = work_dir
-        if DEBUG > 1: print("Work directory: %s" % (work_dir))
-	self.pid = 0
+        if DEBUG > 2: print("%s" % (command))
+        self.work_dir = work_dir
+        if DEBUG > 2: print("Work directory: %s" % (work_dir))
+        self.pid = 0
         return
     
     def run(self):
-	print("::: Project directory: %s" % (self.work_dir))
-	current_dir = os.getcwd()
-	os.chdir(self.work_dir)
+        print("::: Project directory: %s" % (self.work_dir))
+        current_dir = os.getcwd()
+        os.chdir(self.work_dir)
         self.page.yview('moveto', 1.0)
 	#p = subprocess.Popen(self.command, stdout=subprocess.PIPE,
         #                      stderr=subprocess.PIPE, shell=True)
@@ -1181,23 +1521,28 @@ class RunThread(Thread):
         return
 
 class MonitorThread(Thread):
-    def __init__(self, logfile, mythread, timeout, page, messagebar, bd_path):
+    """Monitor runing BD job and print out progress information."""
+    def __init__(self, logfile, mythread, timeout, totntraj, page,
+                 messagebar1, messagebar2, messagebar3, bd_path):
         Thread.__init__(self)
         self.logfile = logfile.replace("\\","/")
+        self.totntraj = totntraj
         self.page = page
-        self.messagebar = messagebar
+        self.messagebar1 = messagebar1
+        self.messagebar2 = messagebar2
+        self.messagebar3 = messagebar3
         self.bd_path = bd_path
-        if DEBUG > 1: print("::: logfile: %s" % logfile)
-        if DEBUG > 1: print("::: self.logfile: %s" % self.logfile)
+        if DEBUG > 2: print("::: logfile: %s" % logfile)
+        if DEBUG > 2: print("::: self.logfile: %s" % self.logfile)
         self.mythread = mythread
         self.timeout = timeout
     def run(self):
         seconds = 0
         readcount = 0 
         while self.mythread.is_alive() and seconds < self.timeout:
+            time.sleep(5)
             if os.path.getsize(self.logfile) > readcount+20:
                 with open(self.logfile,'r') as f:
-                    #res = open('results.xml', 'r')
                     f.seek(readcount,0)
                     while readcount < os.path.getsize(self.logfile):
                         logline = f.readline()
@@ -1206,46 +1551,69 @@ class MonitorThread(Thread):
                         self.page.insert('end', "%s" % logline)
                         readcount = f.tell()
 
-                seconds = seconds+10
-                time.sleep(10)
+                seconds = seconds+5
                 #transfer_status['log'] = 'Running for %d seconds'%seconds
+            with open('results.xml', 'r') as f:
+                results = etree.parse(f)
+                ntraj = results.xpath('//reactions/n-trajectories')[0].text.strip()
+                stuck = results.xpath('//reactions/stuck')[0].text.strip()
+                escaped = results.xpath('//reactions/escaped')[0].text.strip()
+                ncompleted = results.xpath('//reactions/completed/name')[0].text.strip()
+                completed = results.xpath('//reactions/completed/n')[0].text.strip()
+                mymessage = '%s out of %d' % (ntraj, self.totntraj)
+                self.messagebar1.message('state', mymessage)
+                mymessage= '%s / %s / %s' % (completed, escaped, stuck) 
+                self.messagebar2.message('state', mymessage)
+                
             command = ('cat results.xml | %s/compute_rate_constant'
                        % (self.bd_path))
             status, output = commands.getstatusoutput(command)
-            self.messagebar.message('state', output)
-            time.sleep(5)
+            rates = etree.fromstring(output)
+            rate_constant = rates.xpath('//rate-constant/mean')[0].text.strip()
+            rxn_probability = rates.xpath('//reaction-probability/mean')[0].text.strip()
+            mymessage = ('%s / %s' % (rate_constant, rxn_probability))
+            self.messagebar3.message('state', mymessage)
             
-        time.sleep(5)
+        time.sleep(2)
         print("::: BrownDye simulation finished.")
         self.page.insert('end', "::: BrownDye simulation finished\n")
         return
     
 class StopThread(Thread):
+    """Kill running thread."""
     def __init__(self, mythread):
         self.pid = mythread.pid
         os.system('kill -9 %d' % self.pid)
         return
     
 class Psize:
-    """
+    """Calculate grid size dimensions for a pqr molecule."
+    
     This is based on pdb2pqr version of psize. All licensing info applies.
+
+    Note: CFAC and FADD defaults changed to accomodate BrownDye requirements.
+    CFAC 1.7 -> 3.0
+    FADD 20 -> 50
+
+    This significantly increases the grid size and thus memory requirements.
+
     """
     def __init__(self):
         self.constants = {"CFAC":3.0, "FADD":50, "SPACE":0.50, "GMEMFAC":200,
                           "GMEMCEIL":400, "OFAC":0.1, "REDFAC":0.25,
                           "TFAC_ALPHA":9e-5, "TFAC_XEON":3e-4, "TFAC_SPARC": 5e-4}
-        self.minlen = [360.0] * 3
-        self.maxlen = [0.0] * 3
+        self.minlen = [360.0, 360.0, 360.0]
+        self.maxlen = [0.0, 0.0, 0.0]
         self.q = 0.0
         self.gotatom = 0
         self.gothet = 0
-        self.olen = [0.0] * 3
-        self.cen = [0.0] * 3
-        self.clen = [0.0] * 3
-        self.flen = [0.0] * 3
-        self.n = [0] * 3
-        self.np = [0.0] * 3
-        self.nsmall = [0] * 3
+        self.olen = [0.0, 0.0, 0.0]
+        self.cen =  [0.0, 0.0, 0.0]
+        self.clen = [0.0, 0.0, 0.0]
+        self.flen = [0.0, 0.0, 0.0]
+        self.n = [0, 0, 0]
+        self.np = [0.0, 0.0, 0.0]
+        self.nsmall = [0, 0, 0]
         self.nfocus = 0
 
     def parseInput(self, filename):
@@ -1261,7 +1629,8 @@ class Psize:
                 ## words = string.split(subline) ## this is a hack
                 ## adhering to lovely PDB format definition (fixed space)
                 #words = line[30:38], line[38:46], line[46:54], line[54:60], line[60:66], line[72:76], line[76:78] 
-                words = line[30:38], line[38:46], line[46:54], line[54:63], line[63:69], line[72:76], line[76:78] 
+                words = (line[30:38], line[38:46], line[46:54], line[54:63],
+                         line[63:69], line[72:76], line[76:78])
                 if len(filter(string.strip, words)) < 4:    
                     sys.stderr.write("Can't parse following line:\n")
                     sys.stderr.write("%s\n" % line)
@@ -1270,9 +1639,9 @@ class Psize:
                 self.gotatom = self.gotatom + 1
                 try:
                     self.q = self.q + float(words[3])
-                except ValueError, ve:                    
+                except ValueError, ve:
                     print("Error parsing line", line)
-                    #ATOM     12  CG  HIS A   0      41.299 139.172 108.417  1.00100.00           C
+                    #ATOM     12  CG  HIS A   0      41.299 139.172 108.417  1.00100.00   C
                     raise ve
                 rad = float(words[4])
                 center = []
