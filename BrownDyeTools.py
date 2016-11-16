@@ -1,10 +1,11 @@
 #!/usr/bin/env python2
 #-*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-15 12:53:07
+# Last modified: 2016-11-16 09:51:10
 #
-# GNU statement
+# FIXME GNU statement
 #
+
 from __future__ import print_function
 import os, subprocess, commands
 import sys, string
@@ -19,6 +20,7 @@ import tkColorChooser
 import Tkinter
 import Pmw
 from threading import Thread
+from lxml import etree
 
 DEBUG = 5
 
@@ -27,7 +29,7 @@ __version__ = "0.0.1"
 PDB2PQR_PATH = ''
 APBS_PATH = ''
 BD_PATH = ''
-logfile = "LOGFILE"
+logfile = 'LOGFILE'
 
 if DEBUG > 0:
     PDB2PQR_PATH = '/opt/pdb2pqr-linux-bin64-2.1.0/'
@@ -38,15 +40,14 @@ if "PDB2PQR_PATH" in os.environ: PDB2PQR_PATH = os.environ["PDB2PQR_PATH"]
 if "APBS_PATH" in os.environ: APBS_PATH = os.environ["APBS_PATH"]
 if "BD_PATH" in os.environ: BD_PATH = os.environ["BD_PATH"]
 
-
 def __init__(self):
-    """ BrownDye plugin for PyMol
-    """
+    """BrownDye plugin for PyMol."""
     self.menuBar.addmenuitem('Plugin', 'command',
                              'BrownDye Plugin', label='BrownDye Plugin',
                              command=lambda s=self: BDPlugin(s))
 
-class DummyPymol:
+class DummyPymol(object):
+    """Dummy pymol class for testing purposes or when running standalone GUI."""
     class Cmd:
         def load(self,name,sel=''):
             pass
@@ -65,7 +66,8 @@ except ImportError:
     print("::: Pymol features not available!")
     pymol = DummyPymol()
     
-class BDPlugin:
+class BDPlugin(object):
+    """ The main BrowDye plugin class."""
     def __init__(self, app):
         self.parent = app.root
         self.createGUI()
@@ -98,26 +100,26 @@ class BDPlugin:
         self.pqr_ff.set('parse')
 
         # APBS parameters and defaults
-        self.dime0 = [Tkinter.IntVar(), Tkinter.IntVar(), Tkinter.IntVar()]
+        self.dime0 = [Tkinter.IntVar()] * 3
         [self.dime0[x].set(0) for x in range(3)]
-        self.cglen0 = [Tkinter.DoubleVar(), Tkinter.DoubleVar(), Tkinter.DoubleVar()]
+        self.cglen0 = [Tkinter.DoubleVar()] * 3
         [self.cglen0[x].set(0.0) for x in range(3)]
-        self.fglen0 = [Tkinter.DoubleVar(), Tkinter.DoubleVar(), Tkinter.DoubleVar()]
+        self.fglen0 = [Tkinter.DoubleVar()] * 3
         [self.fglen0[x].set(0.0) for x in range(3)]
-        self.dime1 = [Tkinter.IntVar(), Tkinter.IntVar(), Tkinter.IntVar()]
+        self.dime1 = [Tkinter.IntVar()] * 3
         [self.dime1[x].set(0) for x in range(3)]
-        self.cglen1 = [Tkinter.DoubleVar(), Tkinter.DoubleVar(), Tkinter.DoubleVar()]
+        self.cglen1 = [Tkinter.DoubleVar()] * 3
         [self.cglen1[x].set(0.0) for x in  range(3)]
-        self.fglen1 = [Tkinter.DoubleVar(), Tkinter.DoubleVar(), Tkinter.DoubleVar()]
+        self.fglen1 = [Tkinter.DoubleVar()] * 3
         [self.fglen1[x].set(0.0) for x in range(3)]
 
         self.apbs_mode = Tkinter.StringVar()
         self.apbs_mode.set('lpbe')
         self.bcfl = Tkinter.StringVar()
         self.bcfl.set('sdh')
-        self.ion_charge = [Tkinter.IntVar(), Tkinter.IntVar()]
-        self.ion_conc = [Tkinter.DoubleVar(), Tkinter.DoubleVar()]
-        self.ion_rad = [Tkinter.DoubleVar(), Tkinter.DoubleVar()]
+        self.ion_charge = [Tkinter.IntVar()] * 2
+        self.ion_conc = [Tkinter.DoubleVar()] * 2
+        self.ion_rad = [Tkinter.DoubleVar()] * 2
         self.ion_charge[0].set(1)
         self.ion_charge[1].set(-1)
         [self.ion_conc[x].set(0.15) for x in range(2)] 
@@ -142,7 +144,7 @@ class BDPlugin:
 
         # reaction criteria
         self.contacts = Tkinter.StringVar()
-        self.contacts.set('protein-protein-contacts.xml')
+        self.contacts.set('protein-protein-contacts.xml') # FIXME
         self.rxn_distance = Tkinter.DoubleVar()
         self.rxn_distance.set(5.0)
         self.npairs= Tkinter.IntVar()
@@ -190,10 +192,11 @@ class BDPlugin:
         self.cleanup_saved_pymol_sel.set(True) # by default, clean up
 
         w = Tkinter.Label(self.dialog.interior(),
-                          text = '\nBrownDye Plugin for PyMOL\nVersion ' + __version__ + 
-                          ', NBCR 2016\n\n' +
-                          'Plugin for setting up and running BrownDye Browndian dynamics simulations.',
-                          background='black', foreground='green')
+                          text = ('\nBrownDye Plugin for PyMOL\n'
+                                  'Version %s, NBCR 2016\n\n'
+                                  'Plugin for setting up and running BrownDye '
+                                  'Browndian dynamics simulations.' % __version__),
+                          background='black', foreground='white')
         w.pack(expand=1, fill='both', padx=10, pady=5)
 
         # make a notebook
@@ -281,7 +284,8 @@ class BDPlugin:
                                     menubutton_width=7,
                                     items=['parse', 'charmm', 'amber'])
         pqr_an_but = Tkinter.Checkbutton(group_pqr,
-                                         text='Assign charge and radius only (no structure optimization)', 
+                                         text=('Assign charge and radius only '
+                                               '(no structure optimization)'), 
                                          variable=self.pqr_assign_only,
                                          onvalue=True, offvalue=False)
         pqr_opt_but = Tkinter.Button(page, text='Create PQR files',
@@ -718,7 +722,7 @@ class BDPlugin:
                                       text_width=100, text_height=15,
                                       text_wrap='none',
                                       text_background='#000000',
-                                      text_foreground='green')
+                                      text_foreground='white')
 
         bkgj_cb.grid(sticky='w', row=0, column=0, columnspan=2, padx=1, pady=1)
         run_bd_but.grid(sticky='we', row=1, column=0, padx=5, pady=1)
@@ -740,25 +744,20 @@ class BDPlugin:
         page = self.notebook.add('About')
         group_about = Tkinter.LabelFrame(page, text='About BrownDye Plugin for PyMOL')
         group_about.grid(sticky='n', row=0, column=0, columnspan=2, padx=10, pady=5)
-        about_plugin = '''
+        about_plugin = (
+            'This plugin provides a GUI for setting up and running Brownian '
+            'dynamics simulations with BrownDye.\n\n'
 
-This plugin provides a GUI for setting up and running Brownian \
-dynamics simulations with BrownDye.
+            'The plugin requires PDB2PQR, APBS and BrownDye. '
+            'To download and install these applications go to:\n\n'
+            'http://www.poissonboltzmann.org/ \nand\n'
+            'http://browndye.ucsd.edu/\n\n'
 
-The plugin requires PDB2PQR, APBS and BrownDye. To download and \
-install these applications go to:
+            'This software is released under the terms of GNU GPL2 license.\n'
+            'For more details please see the accompanying documentation.\n\n'
 
-http://www.poissonboltzmann.org/
-and 
-http://browndye.ucsd.edu/
-
-This software is released under the terms of GNU GPL2 license. For \
-more details please see the accompanying documentation.
-
-(c) 2016 National Biomedical Computation Resource
-http://nbcr.ucsd.edu/
-
-'''
+            '(c) 2016 National Biomedical Computation Resource\n'
+            'http://nbcr.ucsd.edu/')
 
         label_about = Tkinter.Label(group_about, text=about_plugin)
         label_about.grid(sticky='we', row=0, column=2, padx=5, pady=10)
@@ -769,7 +768,7 @@ http://nbcr.ucsd.edu/
     def getProjectDir(self):
         rndID = random.randint(1000, 9999)
         cwd = os.getcwd()
-        pDir = cwd + '/bd-project-' + str(rndID)
+        pDir = '%s/bd-project-%d' % (cwd, rndID)
         return pDir
     
     def browseProjectDir(self):
@@ -799,7 +798,7 @@ http://nbcr.ucsd.edu/
         if p.returncode > 0:
             sys.stderr.write("::: Non-zero return code!\n") 
             sys.stderr.write("::: Failed command: \n\n")
-            sys.stderr.write(command + "\n\n")
+            sys.stderr.write("%s \n\n" %command)
             sys.stderr.write(err)
             #sys.exit(1)
         return(p.returncode)
@@ -844,7 +843,7 @@ http://nbcr.ucsd.edu/
     def getSizemol0(self):
         pqr_filename = 'mol0.pqr'
         if not os.path.isfile(pqr_filename):
-            print("::: " + pqr_filename + " does not exist!")
+            print("::: %s does not exist!" % pqr_filename)
             return
         psize = Psize()
         psize.runPsize(pqr_filename)
@@ -860,7 +859,7 @@ http://nbcr.ucsd.edu/
     def getSizemol1(self):
         pqr_filename = 'mol1.pqr'
         if not os.path.isfile(pqr_filename):
-            print("::: " + pqr_filename + " does not exist!")
+            print("::: %s does not exist!" % pqr_filename)
             return
         psize = Psize()
         psize.runPsize(pqr_filename)
@@ -892,19 +891,20 @@ http://nbcr.ucsd.edu/
             return
         an = ''
         if self.pqr_assign_only.get(): an = '--assign-only'
-        pqr_options = an + ' ' + self.pdb2pqr_opt.get() + ' --ff=' + self.pqr_ff.get()
+        pqr_options = ('%s %s --ff=%s' %
+                       (an, self.pdb2pqr_opt.get(), self.pqr_ff.get()))
         for i in ['mol0', 'mol1']:
-            command = self.pdb2pqr_path.get() + '/pdb2pqr ' + \
-                      pqr_options + ' ' + i + '.pdb ' + i + '.pqr'
+            command = ('%s/pdb2pqr %s %s.pdb %s.pqr' %
+                       (self.pdb2pqr_path.get(), pqr_options, i, i))
             if (DEBUG > 0): print(command)
-            print("::: Running pdb2pqr on " + i + " ...")
+            print("::: Running pdb2pqr on %s ..." % i)
             rc = self.runcmd(command)
             if rc != 0:
-                print("::: Command failed: " + command)
+                print("::: Command failed: %s" % command)
         return
 
     def runAPBS(self):
-        apbs_template = '''# APBS template for BD grids
+        apbs_template = """# APBS template for BD grids
 read
     mol pqr %s
 end
@@ -934,10 +934,10 @@ elec
 end
 print elecEnergy 1 end
 quit
-'''
+"""
 
         for i in ['mol0', 'mol1']:
-            pqr_filename = i + '.pqr'
+            pqr_filename = '%s.pqr' % i
             #psize = Psize()
             #psize.runPsize(pqr_filename)
             #print(psize.getCharge())
@@ -954,71 +954,78 @@ quit
                 cglen = [self.cglen1[x].get() for x in range(3)]
                 fglen = [self.fglen1[x].get() for x in range(3)]
             if grid_points[0] == 0 or grid_points[1] == 0 or grid_points[2] == 0:
-                print("::: " + i + " - no grid points defined!")
+                print("::: %s - no grid points defined!" % i)
                 return
                 
             dx_filename = i
-            fnout = i + '.in'
-            fout = open(fnout, "w")
-            fout.write(apbs_template % \
-                       (pqr_filename, grid_points[0], grid_points[1], grid_points[2],
-                        cglen[0], cglen[1], cglen[2],
-                        fglen[0], fglen[1], fglen[2], 
-                        self.apbs_mode.get(), self.bcfl.get(),
-                        self.ion_conc[0].get(), self.ion_rad[0].get(),
-                        self.ion_conc[1].get(), self.ion_rad[1].get(),
-                        self.interior_dielectric.get(), self.solvent_dielectric.get(),
-                        self.chgm.get(), self.sdens.get(), self.srfm.get(),
-                        self.srad.get(), self.swin.get(), self.system_temp.get(),
-                        dx_filename))
-            fout.close()
-            command = self.apbs_path.get() + '/apbs ' + i + '.in'
+            fnout = '%s.in' % i
+            with open(fnout, "w") as fout:
+                fout.write((apbs_template % 
+                            (pqr_filename,
+                             grid_points[0], grid_points[1], grid_points[2],
+                             cglen[0], cglen[1], cglen[2],
+                             fglen[0], fglen[1], fglen[2], 
+                             self.apbs_mode.get(), self.bcfl.get(),
+                             self.ion_conc[0].get(), self.ion_rad[0].get(),
+                             self.ion_conc[1].get(), self.ion_rad[1].get(),
+                             self.interior_dielectric.get(),
+                             self.solvent_dielectric.get(),
+                             self.chgm.get(), self.sdens.get(),
+                             self.srfm.get(), self.srad.get(),
+                             self.swin.get(), self.system_temp.get(),
+                             dx_filename)))
+
+            command = '%s/apbs %s.in' % (self.apbs_path.get(), i)
             if (DEBUG > 0):
                 print(command)
                 print(grid_points)
                 print(cglen)
                 print(fglen)
-            print("::: Running apbs on " + i + " ...")
+            print("::: Running apbs on %s ... " % i)
             rc = self.runcmd(command)
             if rc != 0:
-                print("::: Failed: " + command)
+                print("::: Failed: %s" % command)
 
         return
 
     def run_pqr2xml(self):
         """Run pqr2xml on mol0 and mol1 pqr files. """
         for i in ['mol0', 'mol1']:
-            command = self.bd_path.get() + '/pqr2xml < ' + i + '.pqr > ' + i + '-atoms.pqrxml'
+            command = ('%s/pqr2xml < %s.pqr > %s-atoms.pqrxml'
+                       % (self.bd_path.get(), i, i))
             if (DEBUG > 0): print(command)
-            print("::: Running pqr2xml on " + i + " ...")
+            print("::: Running pqr2xml on %s ..." % i)
             rc = self.runcmd(command)
             if rc != 0:
-                print("::: Failed: " + command)
+                print("::: Failed: %s" % command)
         return
                 
     def make_rxn_criteria(self):
-        command = self.bd_path.get() + '/make_rxn_pairs ' + \
-                  '-nonred -mol0 mol0-atoms.pqrxml -mol1 mol1-atoms.pqrxml \
-                  -ctypes ' + self.contacts.get() + ' -dist ' \
-                  + str(self.rxn_distance.get()) + ' > mol0-mol1-rxn-pairs.xml'
+        command = ('%s/make_rxn_pairs '
+                   '-nonred -mol0 mol0-atoms.pqrxml -mol1 mol1-atoms.pqrxml '
+                   '-ctypes %s  -dist %s > mol0-mol1-rxn-pairs.xml'
+                   % (self.bd_path.get(), self.contacts.get(),
+                      str(self.rxn_distance.get())))
         if (DEBUG > 0): print(command)
         print("::: Running make_rxn_pairs ...")
         rc = self.runcmd(command)
         if rc != 0:
-            print("::: Failed: " + command)
-        command = self.bd_path.get() + '/make_rxn_file ' + \
-                  '-pairs mol0-mol1-rxn-pairs.xml -distance ' + \
-                  str(self.rxn_distance.get()) + ' -nneeded ' + \
-                  str(self.npairs.get()) + ' > mol0-mol1-rxns.xml'
+            print("::: Failed: %s" % command)
+        command =('%s/make_rxn_file '
+                  '-pairs mol0-mol1-rxn-pairs.xml -distance %s '
+                  ' -nneeded %s > mol0-mol1-rxns.xml'
+                  % (self.bd_path.get(), str(self.rxn_distance.get()),
+                  str(self.npairs.get())))
         if (DEBUG > 0): print(command)
         print("::: Running make_rxn_file ...")
         rc = self.runcmd(command)
         if rc != 0:
-            print("::: Failed: " + command)
+            print("::: Failed: %s" % command)
         return
             
     def prepareInputFile(self):
-        nam_simulation_template = '''
+        """Creat BD input file."""
+        nam_simulation_template = """
 <root>
 
  <protein> true </protein>
@@ -1072,26 +1079,25 @@ quit
   <n-steps-per-output> 10000 </n-steps-per-output>
 
 </root>
-'''
-        fout = open('input.xml', "w")
-        fout.write(nam_simulation_template % \
-                   (self.solvent_eps.get(), self.debyel.get(),
-                    self.ntraj.get(), self.nthreads.get(),
-                    self.mol0_eps.get(), self.mol1_eps.get(),
-                    self.mindx.get(), self.ntrajo.get(),
-                    self.ncopies.get(), self.nbincopies.get(),
-                    self.nsteps.get(), self.westeps.get(),
-                    self.maxnsteps.get()))
+"""
+        with open('input.xml', "w") as fout:
+            fout.write((nam_simulation_template % 
+                       (self.solvent_eps.get(), self.debyel.get(),
+                        self.ntraj.get(), self.nthreads.get(),
+                        self.mol0_eps.get(), self.mol1_eps.get(),
+                        self.mindx.get(), self.ntrajo.get(),
+                        self.ncopies.get(), self.nbincopies.get(),
+                        self.nsteps.get(), self.westeps.get(),
+                        self.maxnsteps.get())))
 
-        fout.close()
         # FIXME check for .dx files
-        command = 'PATH=' + self.bd_path.get() + ':${PATH}' + \
-                          ' bd_top' + ' input.xml'
+        command = ('PATH=%s:${PATH} bd_top input.xml'
+                   % self.bd_path.get())
         if (DEBUG > 0): print(command)
         print("::: Running bd_top (this will take a couple of minutes) ...")
         rc = self.runcmd(command)
         if rc != 0:
-            print("::: Failed: " + command)
+            print("::: Failed: %s" % command)
         return
 
     def run_rxn_crit(self):
@@ -1105,15 +1111,14 @@ quit
 
     def runBD(self):
         print("::: Starting BrownDye simulation ...")
-        command = self.bd_path.get() +'/nam_simulation' + \
-                  ' mol0-mol1-simulation.xml >& ' + \
-                  logfile #+ ' & ' 
+        command = ('%s/nam_simulation mol0-mol1-simulation.xml >& %s'
+                   % (self.bd_path.get(), logfile))
         if self.run_in_background.get():
-            p = subprocess.Popen(" nohup " + command, shell=True)
+            p = subprocess.Popen(" nohup %s" % command, shell=True)
             self.jobPID = p.pid
             self.notebook.selectpage('BD Simulation')
             self.logtxt_ent.insert('end', "::: Starting BrownDye simulation in background.\n")
-            self.logtxt_ent.insert('end', "::: Job PID: " + str(self.jobPID) + " \n")
+            self.logtxt_ent.insert('end', "::: Job PID: %d \n" % self.jobPID)
         else:
             p = RunThread(self.projectDir.get(), command, self.logtxt_ent)
             p.start()
@@ -1142,18 +1147,19 @@ quit
         return
 
 class RunThread(Thread):
+    """ Thread management class."""
     def __init__ (self, work_dir, command, page):
 	Thread.__init__(self)
         self.page = page
         self.command = command
-        if DEBUG > 1: print("%s" %(command))
+        if DEBUG > 1: print("%s" % (command))
 	self.work_dir = work_dir
-        if DEBUG > 1: print("Work directory: %s" %(work_dir))
+        if DEBUG > 1: print("Work directory: %s" % (work_dir))
 	self.pid = 0
         return
     
     def run(self):
-	print("::: Project directory: %s" %(self.work_dir))
+	print("::: Project directory: %s" % (self.work_dir))
 	current_dir = os.getcwd()
 	os.chdir(self.work_dir)
         self.page.yview('moveto', 1.0)
@@ -1181,8 +1187,8 @@ class MonitorThread(Thread):
         self.page = page
         self.messagebar = messagebar
         self.bd_path = bd_path
-        if DEBUG > 1: print("::: logfile: " + logfile)
-        if DEBUG > 1: print("::: self.logfile: " + self.logfile)
+        if DEBUG > 1: print("::: logfile: %s" % logfile)
+        if DEBUG > 1: print("::: self.logfile: %s" % self.logfile)
         self.mythread = mythread
         self.timeout = timeout
     def run(self):
@@ -1190,21 +1196,21 @@ class MonitorThread(Thread):
         readcount = 0 
         while self.mythread.is_alive() and seconds < self.timeout:
             if os.path.getsize(self.logfile) > readcount+20:
-                f = open(self.logfile,'r')
-                #res = open('results.xml', 'r')
-                
-                f.seek(readcount,0)
-                while readcount < os.path.getsize(self.logfile):
-                    logline = f.readline()
-                    if not logline: break
-                    print(logline, end='')
-                    self.page.insert('end', "%s" % logline)
-                    readcount = f.tell()
-                f.close()
+                with open(self.logfile,'r') as f:
+                    #res = open('results.xml', 'r')
+                    f.seek(readcount,0)
+                    while readcount < os.path.getsize(self.logfile):
+                        logline = f.readline()
+                        if not logline: break
+                        print(logline, end='')
+                        self.page.insert('end', "%s" % logline)
+                        readcount = f.tell()
+
                 seconds = seconds+10
                 time.sleep(10)
                 #transfer_status['log'] = 'Running for %d seconds'%seconds
-            command = 'cat results.xml | ' + self.bd_path + '/compute_rate_constant'
+            command = ('cat results.xml | %s/compute_rate_constant'
+                       % (self.bd_path))
             status, output = commands.getstatusoutput(command)
             self.messagebar.message('state', output)
             time.sleep(5)
@@ -1225,21 +1231,21 @@ class Psize:
     This is based on pdb2pqr version of psize. All licensing info applies.
     """
     def __init__(self):
-        self.constants = {"CFAC":3.0, "FADD":50, "SPACE":0.50, "GMEMFAC":200, "GMEMCEIL":400,
-                          "OFAC":0.1, "REDFAC":0.25, "TFAC_ALPHA":9e-5,
-                          "TFAC_XEON":3e-4, "TFAC_SPARC": 5e-4}
-        self.minlen = [360.0, 360.0, 360.0]
-        self.maxlen = [0.0, 0.0, 0.0]
+        self.constants = {"CFAC":3.0, "FADD":50, "SPACE":0.50, "GMEMFAC":200,
+                          "GMEMCEIL":400, "OFAC":0.1, "REDFAC":0.25,
+                          "TFAC_ALPHA":9e-5, "TFAC_XEON":3e-4, "TFAC_SPARC": 5e-4}
+        self.minlen = [360.0] * 3
+        self.maxlen = [0.0] * 3
         self.q = 0.0
         self.gotatom = 0
         self.gothet = 0
-        self.olen = [0.0, 0.0, 0.0]
-        self.cen = [0.0, 0.0, 0.0]
-        self.clen = [0.0, 0.0, 0.0]
-        self.flen = [0.0, 0.0, 0.0]
-        self.n = [0, 0, 0]
-        self.np = [0.0, 0.0, 0.0]
-        self.nsmall = [0,0,0]
+        self.olen = [0.0] * 3
+        self.cen = [0.0] * 3
+        self.clen = [0.0] * 3
+        self.flen = [0.0] * 3
+        self.n = [0] * 3
+        self.np = [0.0] * 3
+        self.nsmall = [0] * 3
         self.nfocus = 0
 
     def parseInput(self, filename):
@@ -1273,8 +1279,8 @@ class Psize:
                 for word in words[0:3]:
                     center.append(float(word))
                 for i in range(3):
-                    self.minlen[i] = min(center[i]-rad, self.minlen[i])
-                    self.maxlen[i] = max(center[i]+rad, self.maxlen[i])
+                    self.minlen[i] = min(center[i] - rad, self.minlen[i])
+                    self.maxlen[i] = max(center[i] + rad, self.maxlen[i])
             elif string.find(line, "HETATM") == 0:
                 self.gothet = self.gothet + 1
 
@@ -1323,7 +1329,7 @@ class Psize:
     
     def setFineGridPoints(self, flen):
         """ Compute mesh grid points, assuming 4 levels in MG hierarchy """
-        tn = [0,0,0]
+        tn = [0, 0, 0]
         for i in range(3):
             tn[i] = int(flen[i]/self.constants["SPACE"] + 0.5)
             self.n[i] = 32*(int((tn[i] - 1) / 32.0 + 0.5)) + 1
@@ -1332,7 +1338,7 @@ class Psize:
         return self.n
 
     def setAll(self):
-        """ Set up all of the things calculated individually above """
+        """ Set up all of the things calculated individually above. """
         maxlen = self.getMax()
         minlen = self.getMin()
         self.setLength(maxlen, minlen)
@@ -1360,7 +1366,7 @@ class Psize:
     def getFineGridPoints(self): return self.n
 
     def runPsize(self, filename):
-        """ Parse input PQR file and set parameters """
+        """ Parse input PQR file and set parameters. """
         self.parseInput(filename)
         self.setAll()
 
