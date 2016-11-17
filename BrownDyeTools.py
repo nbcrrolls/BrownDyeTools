@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-17 14:00:15
+# Last modified: 2016-11-17 14:28:05
 #
 '''BrownDye plugin for Pymol
 
@@ -306,9 +306,24 @@ class BDPlugin(object):
                                    label_text='Molecule 0 PDB file:', labelpos='wn',
                                    entry_textvariable=self.mol0)
         pdb_a_but = Tkinter.Button(group_pqr, text='Browse...',
-                                   command=self.getPDBmol0)
+                                   command=self.getPDBMol0)
 
-        # label1 = Tkinter.Label(group_pqr, text='or')
+        label1 = Tkinter.Label(group_pqr, text='or')
+        self.dialog0 = Pmw.SelectionDialog(page,
+                                           title='Select molecule 0',
+                                           buttons=('OK', 'Cancel'),
+                                           defaultbutton='OK',
+                                           scrolledlist_labelpos='n',
+                                           label_text='What do you think of Pmw?',
+                                           scrolledlist_items=(
+                                               'Cool man', 'Cool', 'Good', 'Bad', 'Gross'),
+                                           command=self.selectMol0)
+        self.dialog0.withdraw()
+
+        select0_but = Tkinter.Button(group_pqr, text='Select molecule 0',
+                                     command=self.dialog0.activate)
+        
+
         # pymol_selection_opt = Pmw.OptionMenu(group_pqr, labelpos='w',
         #                                     label_text='Select molecule 0: ',
         #                                     menubutton_textvariable=self.pqr_ff,
@@ -319,7 +334,7 @@ class BDPlugin(object):
                                    label_text='Molecule 1 PDB file:', labelpos='wn',
                                    entry_textvariable=self.mol1)
         pdb_b_but = Tkinter.Button(group_pqr, text='Browse...',
-                                   command=self.getPDBmol1)
+                                   command=self.getPDBMol1)
         #pqr_opt = Pmw.EntryField(group_pqr,
         #                         label_text='pdb2pqr options:', labelpos='wn',
         #                         value=self.pdb2pqr_opt.get(),
@@ -340,6 +355,8 @@ class BDPlugin(object):
 
         pdb_a_ent.grid(sticky='we', row=0, column=0, padx=5, pady=1)
         pdb_a_but.grid(sticky='we', row=0, column=1, padx=5, pady=1)
+        label1.grid(sticky='we', row=0, column=2, padx=5, pady=1)
+        select0_but.grid(sticky='we', row=0, column=3, padx=5, pady=1)
         #pymol_selection_opt(sticky='we', row=0, column=2, padx=5, pady=1)
         pdb_b_ent.grid(sticky='we', row=1, column=0, padx=5, pady=1)
         pdb_b_but.grid(sticky='we', row=1, column=1, padx=5, pady=1)
@@ -939,7 +956,7 @@ class BDPlugin(object):
         self.bd_path.set(d)
         return
 
-    def getPDBmol0(self):
+    def getPDBMol0(self):
         """Get molecule 0 filename."""
         file_name = tkFileDialog.askopenfilename(
             title='PDB File', initialdir='',
@@ -948,7 +965,7 @@ class BDPlugin(object):
         self.mol0.set(file_name)
         return
         
-    def getPDBmol1(self):
+    def getPDBMol1(self):
         """Get molecule 1 filename."""
         file_name = tkFileDialog.askopenfilename(
             title='PDB File', initialdir='',
@@ -957,6 +974,18 @@ class BDPlugin(object):
         self.mol1.set(file_name)
         return
 
+    def selectMol0(self, result):
+        sel = self.dialog0.getcurselection()
+        if len(sel) > 0: print("::: Selection: %s" % sel)
+        self.dialog0.deactivate(result)
+        return
+
+    def selectMol1(self, sel):
+        sel = self.dialog0.getcurselection()
+        print("::: Selection: %s" % sel)
+        self.dialog0.deactivate(result)
+        return
+    
     def getSizemol0(self):
         """Calculate APBS grid dimensions for molecule 0."""
         pqr_filename = 'mol0.pqr'
