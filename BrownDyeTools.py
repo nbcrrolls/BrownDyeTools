@@ -7,10 +7,8 @@
 #
 
 from __future__ import print_function
-import os, subprocess, commands
+import os, subprocess
 import sys, string, filecmp, shutil
-#from sys import stdout
-#from math import log
 import random
 import time
 import tkSimpleDialog
@@ -836,10 +834,10 @@ class BDPlugin(object):
         p = subprocess.Popen(command, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, shell=True)
         p.wait()
-        (out,err) = p.communicate();
+        stdout, stderr = p.communicate();
         if DEBUG > 2: print("returncode = %d" % p.returncode)
-        if DEBUG > 2: print("stdout:\n%s\n" % out)
-        if DEBUG > 2: print("stderr:\n%s\n" % err)
+        if DEBUG > 2: print("stdout:\n%s\n" % stdout)
+        if DEBUG > 2: print("stderr:\n%s\n" % stderr)
         if p.returncode > 0:
             sys.stderr.write("::: Non-zero return code!\n") 
             sys.stderr.write("::: Failed command: \n\n")
@@ -1508,8 +1506,12 @@ class RunThread(Thread):
 	#self.pid = p.pid
         #time.sleep(10)
 	#(out, err) = p.communicate()
-        self.status, output = commands.getstatusoutput(self.command)
-        self.outlog = output
+        p = subprocess.Popen(command, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, shell=True)
+        p.wait()
+        stdout, stderr = p.communicate();
+        self.outlog = stdout
+        self.status = p.returncode
         #print (out, err)
 	#try:
 	# self.page.insert('end',"%s %s" % (out, err))
@@ -1567,8 +1569,11 @@ class MonitorThread(Thread):
                 
             command = ('cat results.xml | %s/compute_rate_constant'
                        % (self.bd_path))
-            status, output = commands.getstatusoutput(command)
-            rates = etree.fromstring(output)
+            p = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, shell=True)
+            p.wait()
+            stdout, stderr = p.communicate();
+            rates = etree.fromstring(stdout)
             rate_constant = rates.xpath('//rate-constant/mean')[0].text.strip()
             rxn_probability = rates.xpath('//reaction-probability/mean')[0].text.strip()
             mymessage = ('%s / %s' % (rate_constant, rxn_probability))
@@ -1639,7 +1644,7 @@ class Psize:
                 self.gotatom = self.gotatom + 1
                 try:
                     self.q = self.q + float(words[3])
-                except ValueError, ve:
+                except ValueError as ve:
                     print("Error parsing line", line)
                     #ATOM     12  CG  HIS A   0      41.299 139.172 108.417  1.00100.00   C
                     raise ve
