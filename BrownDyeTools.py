@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-17 13:35:47
+# Last modified: 2016-11-17 14:00:15
 #
 '''BrownDye plugin for Pymol
 
@@ -1135,7 +1135,7 @@ quit
                 print("::: Failed: %s" % command)
         return
 
-    def createDefaultContactsDile(self):
+    def createDefaultContactsFile(self):
         contacts_template = """
 <!-- Default protein/protein contacts file -->
 <contacts>
@@ -1177,7 +1177,6 @@ quit
       <contact>
         <atom> NE1 </atom> <residue> TRP </residue>
       </contact>
-
       <contact> <atom> N </atom> <residue> ALA </residue> </contact>
       <contact> <atom> N </atom> <residue> ARG </residue> </contact>
       <contact> <atom> N </atom> <residue> ASN </residue> </contact>
@@ -1658,18 +1657,12 @@ class RunThread(Thread):
         # current_dir = os.getcwd()
         os.chdir(self.work_dir)
         self.page.yview('moveto', 1.0)
-        # p = subprocess.Popen(self.command, stdout=subprocess.PIPE,
-        #                      stderr=subprocess.PIPE, shell=True)
-	# self.pid = p.pid
-        # time.sleep(10)
-	# (out, err) = p.communicate()
-        p = subprocess.Popen(command, stdout=subprocess.PIPE,
+        p = subprocess.Popen(self.command, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, shell=True)
         p.wait()
         stdout, stderr = p.communicate()
         self.outlog = stdout
         self.status = p.returncode
-        # print (out, err)
 	# try:
 	#  self.page.insert('end',"%s %s" % (out, err))
         #  self.page.yview('moveto', 1.0)
