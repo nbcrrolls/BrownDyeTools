@@ -1,16 +1,16 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-17 14:28:05
+# Last modified: 2016-11-17 19:30:09
 #
 '''BrownDye plugin for Pymol
 
-For documentation see: http://
+For documentation see: https://github.io
 
 Author : Robert Konecny
 Email: rok@ucsd.edu
 Release date: November 2016
-License: GNU General Public License
+License: GNU General Public License v.3
 
 Copyright 2016 Robert Konecny, NBCR
 
@@ -309,19 +309,18 @@ class BDPlugin(object):
                                    command=self.getPDBMol0)
 
         label1 = Tkinter.Label(group_pqr, text='or')
+        sel_list = []
         self.dialog0 = Pmw.SelectionDialog(page,
-                                           title='Select molecule 0',
+                                           title='mol0',
                                            buttons=('OK', 'Cancel'),
                                            defaultbutton='OK',
                                            scrolledlist_labelpos='n',
-                                           label_text='What do you think of Pmw?',
-                                           scrolledlist_items=(
-                                               'Cool man', 'Cool', 'Good', 'Bad', 'Gross'),
+                                           label_text='Select molecule 0',
+                                           scrolledlist_items=sel_list,
                                            command=self.selectMol0)
         self.dialog0.withdraw()
-
         select0_but = Tkinter.Button(group_pqr, text='Select molecule 0',
-                                     command=self.dialog0.activate)
+                                     command=self.dialog0Call)
         
 
         # pymol_selection_opt = Pmw.OptionMenu(group_pqr, labelpos='w',
@@ -984,6 +983,14 @@ class BDPlugin(object):
         sel = self.dialog0.getcurselection()
         print("::: Selection: %s" % sel)
         self.dialog0.deactivate(result)
+        return
+
+    def dialog0Call(self):
+        """Populate the selection list with pymol objects."""
+        self.dialog0.delete(0, 'end')
+        for i in pymol.cmd.get_names():
+            self.dialog0.insert('end', i)
+        self.dialog0.activate()
         return
     
     def getSizemol0(self):
