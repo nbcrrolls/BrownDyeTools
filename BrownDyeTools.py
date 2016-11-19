@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-18 14:34:49
+# Last modified: 2016-11-18 21:41:33
 #
 '''BrownDye plugin for Pymol
 
@@ -50,6 +50,8 @@ APBS_PATH = ''
 BD_PATH = ''
 LOGFILE = 'LOGFILE'
 DEFAULT_CONTACTS_FILE = 'protein-protein-contacts-default.xml'
+MOL0 = 'mol0'
+MOL1 = 'mol1'
 
 if DEBUG > 0:
     PDB2PQR_PATH = '/opt/pdb2pqr-linux-bin64-2.1.0/'
@@ -116,8 +118,8 @@ class BDPlugin(object):
         # parameters used by pdb2pqr
         self.mol0 = Tkinter.StringVar()
         self.mol1 = Tkinter.StringVar()
-        self.mol0.set('mol0.pdb') # for testing only
-        self.mol1.set('mol1.pdb')
+        self.mol0.set('%s.pdb' % MOL0) # for testing only
+        self.mol1.set('%s.pdb' % MOL1)
         self.mol0_object = Tkinter.StringVar()
         self.mol1_object = Tkinter.StringVar()
         self.mol0_object.set(None)
@@ -1038,7 +1040,7 @@ class BDPlugin(object):
     
     def getSizemol0(self):
         """Calculate APBS grid dimensions for molecule 0."""
-        pqr_filename = 'mol0.pqr'
+        pqr_filename = '%s.pqr' % MOL0
         if not os.path.isfile(pqr_filename):
             print("::: %s does not exist!" % pqr_filename)
             return
@@ -1055,7 +1057,7 @@ class BDPlugin(object):
 
     def getSizemol1(self):
         """Calculate APBS grid dimensions for molecule 1."""
-        pqr_filename = 'mol1.pqr'
+        pqr_filename = '%s.pqr' % MOL1
         if not os.path.isfile(pqr_filename):
             print("::: %s does not exist!" % pqr_filename)
             return
@@ -1081,32 +1083,36 @@ class BDPlugin(object):
     
     def pdb2pqr(self):
         """Convert PDB to PQR."""
+        target_f = '%s.pdb' % MOL0
         if self.mol0_object.get() == 'None':
-            if not filecmp.cmp(self.mol0.get(), 'mol0.pdb'):
+            if not filecmp.cmp(self.mol0.get(), target_f):
                 try:
-                    shutil.copyfile(self.mol0.get(), 'mol0.pdb')
+                    shutil.copyfile(self.mol0.get(), target_f)
                 except:
-                    print("::: Creating of mol0.pdb failed!")
+                    print("::: Creating of %s failed!" % target_f)
                     return
         else:
-            # save pymol mol0_object to pdb file
-            self.mol0.set('mol0.pdb')
+            self.mol0.set(target_f)
+            pymol.cmd.save(filename=self.mol0.get(),
+                           selection=self.mol0_object.get())
+        target_f = '%s.pdb' % MOL1
         if self.mol1_object.get() == 'None':
-            if not filecmp.cmp(self.mol1.get(), 'mol1.pdb'):
+            if not filecmp.cmp(self.mol1.get(), target_f):
                 try:
-                    shutil.copyfile(self.mol1.get(), 'mol1.pdb')
+                    shutil.copyfile(self.mol1.get(), target_f)
                 except:
-                    print("::: Creating of mol1.pdb failed!")
+                    print("::: Creating of %s failed!" % target_f)
                     return
         else:
-            # save pymol mol1_object to pdb file
-            self.mol1.set('mol1.pdb')
+            self.mol1.set(target_f)
+            pymol.cmd.save(filename=self.mol1.get(),
+                           selection=self.mol1_object.get())
 
         assign_only = ''
         if self.pqr_assign_only.get(): assign_only = '--assign-only'
         pqr_options = ('%s %s --ff=%s' %
                        (assign_only, self.pdb2pqr_opt.get(), self.pqr_ff.get()))
-        for i in ['mol0', 'mol1']:
+        for i in [MOL0, MOL1]:
             command = ('%s/pdb2pqr %s %s.pdb %s.pqr' %
                        (self.pdb2pqr_path.get(), pqr_options, i, i))
             if DEBUG > 2: print(command)
@@ -1153,7 +1159,7 @@ print elecEnergy 1 end
 quit
 """
 
-        for i in ['mol0', 'mol1']:
+        for i in [MOL0, MOL1]:
             pqr_filename = '%s.pqr' % i
             # psize = Psize()
             # psize.runPsize(pqr_filename)
@@ -1162,11 +1168,11 @@ quit
             # cglen = psize.getCoarseGridDims()
             # fglen = psize.getFineGridDims()
 
-            if i == 'mol0':
+            if i == MOL0:
                 grid_points = [self.dime0[x].get() for x in range(3)]
                 cglen = [self.cglen0[x].get() for x in range(3)]
                 fglen = [self.fglen0[x].get() for x in range(3)]
-            if i == 'mol1':
+            if i == MOL1:
                 grid_points = [self.dime1[x].get() for x in range(3)]
                 cglen = [self.cglen1[x].get() for x in range(3)]
                 fglen = [self.fglen1[x].get() for x in range(3)]
@@ -1211,7 +1217,7 @@ quit
 
     def runPqr2xml(self):
         """Run pqr2xml on mol0 and mol1 PQR files. """
-        for i in ['mol0', 'mol1']:
+        for i in [MOL0, MOL1]:
             command = ('%s/pqr2xml < %s.pqr > %s-atoms.pqrxml'
                        % (self.bd_path.get(), i, i))
             if DEBUG > 2: print(command)
@@ -1479,10 +1485,10 @@ quit
             print("::: File not found: %s" % self.contacts_f.get())
             return
         command = ('%s/make_rxn_pairs '
-                   '-nonred -mol0 mol0-atoms.pqrxml -mol1 mol1-atoms.pqrxml '
-                   '-ctypes %s  -dist %f > mol0-mol1-rxn-pairs.xml'
-                   % (self.bd_path.get(), self.contacts_f.get(),
-                      self.rxn_distance.get()))
+                   '-nonred -mol0 %s-atoms.pqrxml -mol1 %s-atoms.pqrxml '
+                   '-ctypes %s  -dist %f > %s-%s-rxn-pairs.xml'
+                   % (self.bd_path.get(), MOL0, MOL1, self.contacts_f.get(),
+                      self.rxn_distance.get()), MOL0, MOL1)
         if DEBUG > 2: print(command)
         print("::: Running make_rxn_pairs ...")
         rc = self.runCmd(command)
@@ -1491,10 +1497,10 @@ quit
         else:
             print("::: Failed: %s" % command)
         command =('%s/make_rxn_file '
-                  '-pairs mol0-mol1-rxn-pairs.xml -distance %f '
-                  ' -nneeded %d > mol0-mol1-rxns.xml'
-                  % (self.bd_path.get(), self.rxn_distance.get(),
-                     self.npairs.get()))
+                  '-pairs %s-%s-rxn-pairs.xml -distance %f '
+                  ' -nneeded %d > %s-%s-rxns.xml'
+                  % (self.bd_path.get(), MOL0, MOL1, self.rxn_distance.get(),
+                     self.npairs.get()), MOL0, MOL1)
         if DEBUG > 2: print(command)
         print("::: Running make_rxn_file ...")
         rc = self.runCmd(command)
@@ -1517,19 +1523,19 @@ quit
   <n-trajectories> %d </n-trajectories>
   <n-threads> %d </n-threads>
   <molecule0>
-    <prefix> mol0 </prefix>
-    <atoms>  mol0-atoms.pqrxml </atoms>
+    <prefix> %s </prefix>
+    <atoms>  %s-atoms.pqrxml </atoms>
     <apbs-grids>
-       <grid> mol0.dx </grid>
+       <grid> %s.dx </grid>
     </apbs-grids>
     <solute-dielectric> %f </solute-dielectric>
   </molecule0>
   <molecule1>
-    <prefix> mol1 </prefix>
-    <atoms>  mol1-atoms.pqrxml </atoms>
+    <prefix> %s </prefix>
+    <atoms>  %s-atoms.pqrxml </atoms>
     <all-in-surface> false </all-in-surface>
     <apbs-grids>
-       <grid> mol1.dx </grid>
+       <grid> %s.dx </grid>
     </apbs-grids>
     <solute-dielectric> %f </solute-dielectric>
   </molecule1>
@@ -1537,7 +1543,7 @@ quit
   <time-step-tolerances>
     <minimum-dx> %f </minimum-dx>
   </time-step-tolerances>
-  <reactions> mol0-mol1-rxns.xml </reactions>
+  <reactions> %s-%s-rxns.xml </reactions>
   <seed> 11111113 </seed>
   <n-trajectories-per-output> %d </n-trajectories-per-output>
   <n-copies> %d </n-copies>
@@ -1553,8 +1559,10 @@ quit
             fout.write((nam_simulation_template % 
                        (self.solvent_eps.get(), self.debyel.get(),
                         self.ntraj.get(), self.nthreads.get(),
-                        self.mol0_eps.get(), self.mol1_eps.get(),
-                        self.mindx.get(), self.ntrajo.get(),
+                        MOL0 * 3, self.mol0_eps.get(),
+                        MOL1 * 3, self.mol1_eps.get(),
+                        self.mindx.get(), MOL0, MOL1,
+                        self.ntrajo.get(),
                         self.ncopies.get(), self.nbincopies.get(),
                         self.nsteps.get(), self.westeps.get(),
                         self.maxnsteps.get())))
@@ -1583,8 +1591,8 @@ quit
     def runBD(self):
         """Start BrownDye simulation either in foreground or background."""
         print("::: Starting BrownDye simulation ...")
-        command = ('%s/nam_simulation mol0-mol1-simulation.xml >& %s'
-                   % (self.bd_path.get(), LOGFILE))
+        command = ('%s/nam_simulation %s-%s-simulation.xml >& %s'
+                   % (self.bd_path.get(), MOL0, MOL1, LOGFILE))
         if self.run_in_background.get():
             p = subprocess.Popen(" nohup %s" % command, shell=True)
             self.jobPID = p.pid
@@ -1700,10 +1708,9 @@ quit
             print("::: Failed: %s" % command)
             return
         self.xyz_ofile = 'trajectory-%d.xyz' % self.traj_index_n.get()
-        command = ('%s/xyz_trajectory -mol0 mol0-atoms.pqrxml '
-                   '-mol1 mol1-atoms.pqrxml -trajf %s '
-                   '> %s'
-                   % (self.bd_path.get(), ofile, self.xyz_ofile))
+        command = ('%s/xyz_trajectory -mol0 %s-atoms.pqrxml '
+                   '-mol1 %s-atoms.pqrxml -trajf %s > %s'
+                   % (self.bd_path.get(), MOL0, MOL1, ofile, self.xyz_ofile))
         print("::: Converting %s to XYZ trajectory ..." % ofile)
         rc = self.runCmd(command)
         if rc == 0:
