@@ -5,10 +5,9 @@
 #
 '''BrownDye plugin for Pymol
 
-For documentation see: https://github.io
+For documentation see: https://github.com/rokdev/BrownDyeTools
 
-Author : Robert Konecny
-Email: rok@ucsd.edu
+Author : Robert Konecny <rok@ucsd.edu>
 Release date: November 2016
 License: GNU General Public License v.3
 
@@ -67,12 +66,12 @@ if "BD_PATH" in os.environ: BD_PATH = os.environ["BD_PATH"]
 def __init__(self):
     """BrownDye plugin for PyMol."""
     self.menuBar.addmenuitem('Plugin', 'command',
-                             'BrownDye Plugin', label='BrownDye Plugin',
+                             'BrownDye Tools', label='BrownDye Tools',
                              command=lambda s=self: BDPlugin(s))
 
 
 class DummyPymol(object):
-    """Dummy pymol class for testing purposes or when running standalone GUI."""
+    """Dummy pymol class when running standalone GUI."""
     class Cmd:
         def load(self, name, sel=''):
             pass
@@ -119,8 +118,12 @@ class BDPlugin(object):
         # parameters used by pdb2pqr
         self.mol0 = Tkinter.StringVar()
         self.mol1 = Tkinter.StringVar()
-        self.mol0.set('%s.pdb' % MOL0) # for testing only
-        self.mol1.set('%s.pdb' % MOL1)
+        self.mol0.set(None) # '%s.pdb' % MOL0)
+        self.mol1.set(None) # '%s.pdb' % MOL1)
+        self.pqr0 = Tkinter.StringVar()
+        self.pqr1 = Tkinter.StringVar()
+        self.pqr0.set(None)
+        self.pqr1.set(None)
         self.mol0_object = Tkinter.StringVar()
         self.mol1_object = Tkinter.StringVar()
         self.mol0_object.set(None)
@@ -177,7 +180,7 @@ class BDPlugin(object):
 
         # reaction criteria
         self.contacts_f = Tkinter.StringVar()
-        self.contacts_f.set('protein-protein-contacts.xml') # FIXME
+        self.contacts_f.set('protein-protein-contacts.xml')
         self.default_contacts_f = Tkinter.BooleanVar()
         self.default_contacts_f.set(False)
         self.rxn_distance = Tkinter.DoubleVar()
@@ -193,7 +196,7 @@ class BDPlugin(object):
         self.mol1_eps = Tkinter.DoubleVar()
         self.mol1_eps.set(self.interior_dielectric.get())
         self.debyel = Tkinter.DoubleVar()
-        self.debyel.set(7.86) #FIXME
+        self.debyel.set(7.86) #FIXME -> parse io.mc
         self.ntraj = Tkinter.IntVar()
         self.ntraj.set(100)
         self.nthreads = Tkinter.IntVar()
@@ -223,8 +226,8 @@ class BDPlugin(object):
         # self.pdb2xyzrn_bin = Tkinter.StringVar()
         # self.tmp_dir       = Tkinter.StringVar()
 
-        self.cleanup_saved_pymol_sel = Tkinter.BooleanVar()
-        self.cleanup_saved_pymol_sel.set(True) # by default, clean up
+        # self.cleanup_saved_pymol_sel = Tkinter.BooleanVar()
+        # self.cleanup_saved_pymol_sel.set(True) # by default, clean up
 
         # Analysis
         self.traj_f = Tkinter.StringVar()
@@ -234,7 +237,7 @@ class BDPlugin(object):
         #######################################################################
         # Main code
         w = Tkinter.Label(self.dialog.interior(),
-                          text=('\nBrownDye Plugin for PyMOL\n'
+                          text=('\nBrownDye Tools for PyMOL\n'
                                 'Version %s, NBCR 2016\n\n'
                                 'Plugin for setting up and running BrownDye '
                                 'Browndian dynamics simulations.' % __version__),
@@ -254,16 +257,16 @@ class BDPlugin(object):
         config.pack(fill='both', expand=True, padx=10, pady=10)
 
         project_path_ent = Pmw.EntryField(config,
-                                          label_text='Project directory: ',
+                                          label_text='Create project directory:',
                                           labelpos='wn',
                                           entry_textvariable=self.projectDir)
-        project_path_b_but = Tkinter.Button(config, text='Browse ...',
-                                            command=self.browseProjectDir)
-        label = Tkinter.Label(config, text='or')
         project_path_but = Tkinter.Button(config, text='Create',
                                           command=self.createProjectDir)
+        label = Tkinter.Label(config, text='or')
+        project_path_b_but = Tkinter.Button(config, text='Browse ...',
+                                            command=self.browseProjectDir)
         pdb2pqr_path_ent = Pmw.EntryField(config,
-                                          label_text='Select PDB2PQR location: ',
+                                          label_text='Select PDB2PQR_PATH location:',
                                           labelpos='wn',
                                           entry_textvariable=self.pdb2pqr_path)
         pdb2pqr_path_but = Tkinter.Button(config, text='Browse...',
@@ -275,7 +278,7 @@ class BDPlugin(object):
         apbs_path_but = Tkinter.Button(config, text='Browse...',
                                        command=self.getAPBSpath)
         bd_path_ent = Pmw.EntryField(config,
-                                     label_text='Select BD_PATH location: ',
+                                     label_text='Select BD_PATH location:',
                                      labelpos='wn',
                                      entry_textvariable=self.bd_path)
         bd_path_but = Tkinter.Button(config, text='Browse...',
@@ -283,9 +286,9 @@ class BDPlugin(object):
 
         # arrange widgets using grid
         project_path_ent.grid(sticky='we', row=1, column=0, padx=5, pady=5)
-        project_path_b_but.grid(sticky='we', row=1, column=1, padx=5, pady=5)
-        label.grid(sticky='we', row=1, column=2, padx=5, pady=10)
-        project_path_but.grid(sticky='we', row=1, column=3, padx=5, pady=5)
+        project_path_but.grid(sticky='we', row=1, column=1, padx=5, pady=5)
+        label.grid(           sticky='we', row=1, column=2, padx=5, pady=10)
+        project_path_b_but.grid(sticky='we', row=1, column=3, padx=5, pady=5)
         pdb2pqr_path_ent.grid(sticky='we', row=2, column=0, padx=5, pady=5)
         pdb2pqr_path_but.grid(sticky='we', row=2, column=1, padx=5, pady=5)
         apbs_path_ent.grid(   sticky='we', row=3, column=0, padx=5, pady=5)
@@ -300,15 +303,16 @@ class BDPlugin(object):
         #############################
         page = self.notebook.add('PQR files')
         group_pqr = Tkinter.LabelFrame(page, text='PQR files')
-        group_pqr.grid(sticky='eswn',row=0, column=0, columnspan=2, padx=10, pady=5)
+        group_pqr.grid(sticky='eswn',row=0, column=0, columnspan=3, padx=10, pady=5)
 
-        pdb_a_ent = Pmw.EntryField(group_pqr,
+        pdb_0_ent = Pmw.EntryField(group_pqr,
                                    label_text='Molecule 0 PDB file:', labelpos='wn',
                                    entry_textvariable=self.mol0)
-        pdb_a_but = Tkinter.Button(group_pqr, text='Browse...',
+        pdb_0_but = Tkinter.Button(group_pqr, text='Browse...',
                                    command=self.getPDBMol0)
 
         label0 = Tkinter.Label(group_pqr, text='or')
+
 #        sel_list = []
 #        self.dialog0 = Pmw.SelectionDialog(page,
 #                                           title='Molecule 0',
@@ -327,10 +331,10 @@ class BDPlugin(object):
                                         menubutton_textvariable=self.mol0_object,
                                         menubutton_width=7,
                                         items=(['None'] + pymol.cmd.get_names("all")))
-        pdb_b_ent = Pmw.EntryField(group_pqr,
+        pdb_1_ent = Pmw.EntryField(group_pqr,
                                    label_text='Molecule 1 PDB file:', labelpos='wn',
                                    entry_textvariable=self.mol1)
-        pdb_b_but = Tkinter.Button(group_pqr, text='Browse...',
+        pdb_1_but = Tkinter.Button(group_pqr, text='Browse...',
                                    command=self.getPDBMol1)
         label1 = Tkinter.Label(group_pqr, text='or')
 #        self.dialog1 = Pmw.SelectionDialog(page,
@@ -364,22 +368,41 @@ class BDPlugin(object):
                                                '(no structure optimization)'),
                                          variable=self.pqr_assign_only,
                                          onvalue=True, offvalue=False)
-        pqr_opt_but = Tkinter.Button(page, text='Create PQR files',
+        pqr_opt_but = Tkinter.Button(group_pqr, text='Create PQR files',
                                      command=self.pdb2pqr)
 
-        pdb_a_ent.grid(sticky='we', row=0, column=0, padx=5, pady=1)
-        pdb_a_but.grid(sticky='we', row=0, column=1, padx=5, pady=1)
-        label0.grid(sticky='we', row=0, column=2, padx=5, pady=1)
+        label2 = Tkinter.Label(page, text='or load your PQR files:')
+
+        pqr_0_ent = Pmw.EntryField(page,
+                                   label_text='Molecule 0 PQR file:', labelpos='wn',
+                                   entry_textvariable=self.pqr0)
+        pqr_0_but = Tkinter.Button(page, text='Browse...',
+                                   command=self.getPQRMol0)
+        pqr_1_ent = Pmw.EntryField(page,
+                                   label_text='Molecule 1 PQR file:', labelpos='wn',
+                                   entry_textvariable=self.pqr1)
+        pqr_1_but = Tkinter.Button(page, text='Browse...',
+                                   command=self.getPQRMol1)
+
+        pdb_0_ent.grid(     sticky='we', row=0, column=0, padx=5, pady=1)
+        pdb_0_but.grid(     sticky='we', row=0, column=1, padx=5, pady=1)
+        label0.grid(        sticky='we', row=0, column=2, padx=5, pady=1)
         #select0_but.grid(sticky='we', row=0, column=3, padx=5, pady=1)
         pymol_obj0_opt.grid(sticky='we', row=0, column=3, padx=5, pady=1)
-        pdb_b_ent.grid(sticky='we', row=1, column=0, padx=5, pady=1)
-        pdb_b_but.grid(sticky='we', row=1, column=1, padx=5, pady=1)
-        label1.grid(sticky='we', row=1, column=2, padx=5, pady=1)
+        pdb_1_ent.grid(     sticky='we', row=1, column=0, padx=5, pady=1)
+        pdb_1_but.grid(     sticky='we', row=1, column=1, padx=5, pady=1)
+        label1.grid(        sticky='we', row=1, column=2, padx=5, pady=1)
         #select1_but.grid(sticky='we', row=1, column=3, padx=5, pady=1)
         pymol_obj1_opt.grid(sticky='we', row=1, column=3, padx=5, pady=1)
-        pqr_ff_opt.grid(sticky='we', row=2, column=0, padx=5, pady=1)
-        pqr_an_but.grid(sticky='w', row=3, column=0, padx=5, pady=1)
-        pqr_opt_but.grid(sticky='we', row=4, column=0, padx=5, pady=1)
+        pqr_ff_opt.grid(    sticky='we', row=2, column=0, padx=5, pady=1)
+        pqr_an_but.grid(    sticky='we', row=3, column=0, padx=5, pady=1)
+        pqr_opt_but.grid(   sticky='we', row=4, column=0, padx=5, pady=1)
+        label2.grid(        sticky='we', row=5, column=0, padx=5, pady=1)
+        pqr_0_ent.grid(     sticky='we', row=6, column=0, padx=5, pady=1)
+        pqr_0_but.grid(     sticky='we', row=6, column=1, padx=5, pady=1)
+        pqr_1_ent.grid(     sticky='we', row=7, column=0, padx=5, pady=1)
+        pqr_1_but.grid(     sticky='we', row=7, column=1, padx=5, pady=1)
+
 
         ############
         # Tab: APBS
@@ -927,7 +950,7 @@ class BDPlugin(object):
 
     def getProjectDir(self):
         """Generate a radnom project directory name."""
-        rndID = random.randint(1000, 9999)
+        rndID = random.randint(10000, 99999)
         cwd = os.getcwd()
         pDir = '%s/bd-project-%d' % (cwd, rndID)
         return pDir
@@ -951,6 +974,7 @@ class BDPlugin(object):
             return
         os.makedirs(self.projectDir.get())
         os.chdir(self.projectDir.get())
+        print("::: Created project directory: %s" % self.projectDir.get())
         return
 
     def runCmd(self, command):
@@ -1039,7 +1063,31 @@ class BDPlugin(object):
             self.dialog1.insert('end', i)
         self.dialog1.activate()
         return
-    
+
+    def getPQRMol0(self):
+        """Get molecule 0 PQR filename."""
+        file_name = tkFileDialog.askopenfilename(
+            title='PQR File', initialdir='',
+            filetypes=[('pqr files', '*.pqr'), ('all files', '*')],
+            parent=self.parent)
+        self.pqr0.set(file_name)
+        target_f = '%s/%s.pqr' % (self.projectDir.get(), MOL0)
+        if os.path.isfile(target_f): os.remove(target_f)
+        shutil.copyfile(self.pqr0.get(), target_f)
+        return
+
+    def getPQRMol1(self):
+        """Get molecule 1 PQR filename."""
+        file_name = tkFileDialog.askopenfilename(
+            title='PQR File', initialdir='',
+            filetypes=[('pqr files', '*.pqr'), ('all files', '*')],
+            parent=self.parent)
+        self.pqr1.set(file_name)
+        target_f = '%s/%s.pqr' % (self.projectDir.get(), MOL1)
+        if os.path.isfile(target_f): os.remove(target_f)
+        shutil.copyfile(self.pqr1.get(), target_f)
+        return
+
     def getSizemol0(self):
         """Calculate APBS grid dimensions for molecule 0."""
         pqr_filename = '%s.pqr' % MOL0
@@ -1087,27 +1135,29 @@ class BDPlugin(object):
         """Convert PDB to PQR."""
         target_f = '%s.pdb' % MOL0
         if self.mol0_object.get() == 'None':
-            if not filecmp.cmp(self.mol0.get(), target_f):
-                try:
-                    shutil.copyfile(self.mol0.get(), target_f)
-                except:
-                    print("::: Creating of %s failed!" % target_f)
-                    return
+            # if not filecmp.cmp(self.mol0.get(), target_f):
+            try:
+                shutil.copyfile(self.mol0.get(), target_f)
+            except:
+                e = sys.exc_info()[0]
+                print(e)
+                print("::: Creating of %s failed!" % target_f)
+                return
         else:
-            self.mol0.set(target_f)
-            pymol.cmd.save(filename=self.mol0.get(),
+            pymol.cmd.save(filename=target_f,
                            selection=self.mol0_object.get())
         target_f = '%s.pdb' % MOL1
         if self.mol1_object.get() == 'None':
-            if not filecmp.cmp(self.mol1.get(), target_f):
-                try:
-                    shutil.copyfile(self.mol1.get(), target_f)
-                except:
-                    print("::: Creating of %s failed!" % target_f)
-                    return
+            # if not filecmp.cmp(self.mol1.get(), target_f):
+            try:
+                shutil.copyfile(self.mol1.get(), target_f)
+            except:
+                e = sys.exc_info()[0]
+                print(e)
+                print("::: Creating of %s failed!" % target_f)
+                return
         else:
-            self.mol1.set(target_f)
-            pymol.cmd.save(filename=self.mol1.get(),
+            pymol.cmd.save(filename=target_f,
                            selection=self.mol1_object.get())
 
         assign_only = ''
