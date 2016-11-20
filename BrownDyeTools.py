@@ -308,18 +308,18 @@ class BDPlugin(object):
                                    command=self.getPDBMol0)
 
         label0 = Tkinter.Label(group_pqr, text='or')
-        sel_list = []
-        self.dialog0 = Pmw.SelectionDialog(page,
-                                           title='Molecule 0',
-                                           buttons=('OK', 'Cancel'),
-                                           defaultbutton='OK',
-                                           scrolledlist_labelpos='n',
-                                           label_text='Select molecule 0',
-                                           scrolledlist_items=sel_list,
-                                           command=self.selectMol0)
-        self.dialog0.withdraw()
-        select0_but = Tkinter.Button(group_pqr, text='Select molecule 0',
-                                     command=self.dialog0Call)
+#        sel_list = []
+#        self.dialog0 = Pmw.SelectionDialog(page,
+#                                           title='Molecule 0',
+#                                           buttons=('OK', 'Cancel'),
+#                                           defaultbutton='OK',
+#                                           scrolledlist_labelpos='n',
+#                                           label_text='Select molecule 0',
+#                                           scrolledlist_items=sel_list,
+#                                           command=self.selectMol0)
+#        self.dialog0.withdraw()
+#        select0_but = Tkinter.Button(group_pqr, text='Select molecule 0',
+#                                     command=self.dialog0Call)
 
         pymol_obj0_opt = Pmw.OptionMenu(group_pqr, labelpos='w',
                                         label_text='Select molecule 0: ',
@@ -332,17 +332,17 @@ class BDPlugin(object):
         pdb_b_but = Tkinter.Button(group_pqr, text='Browse...',
                                    command=self.getPDBMol1)
         label1 = Tkinter.Label(group_pqr, text='or')
-        self.dialog1 = Pmw.SelectionDialog(page,
-                                           title='Molecule 1',
-                                           buttons=('OK', 'Cancel'),
-                                           defaultbutton='OK',
-                                           scrolledlist_labelpos='n',
-                                           label_text='Select molecule 1',
-                                           scrolledlist_items=sel_list,
-                                           command=self.selectMol1)
-        self.dialog1.withdraw()
-        select1_but = Tkinter.Button(group_pqr, text='Select molecule 1',
-                                     command=self.dialog1Call)
+#        self.dialog1 = Pmw.SelectionDialog(page,
+#                                           title='Molecule 1',
+#                                           buttons=('OK', 'Cancel'),
+#                                           defaultbutton='OK',
+#                                           scrolledlist_labelpos='n',
+#                                           label_text='Select molecule 1',
+#                                           scrolledlist_items=sel_list,
+#                                           command=self.selectMol1)
+#        self.dialog1.withdraw()
+#        select1_but = Tkinter.Button(group_pqr, text='Select molecule 1',
+#                                     command=self.dialog1Call)
         pymol_obj1_opt = Pmw.OptionMenu(group_pqr, labelpos='w',
                                         label_text='Select molecule 1: ',
                                         menubutton_textvariable=self.mol1_object,
@@ -369,13 +369,13 @@ class BDPlugin(object):
         pdb_a_ent.grid(sticky='we', row=0, column=0, padx=5, pady=1)
         pdb_a_but.grid(sticky='we', row=0, column=1, padx=5, pady=1)
         label0.grid(sticky='we', row=0, column=2, padx=5, pady=1)
-        select0_but.grid(sticky='we', row=0, column=3, padx=5, pady=1)
-        pymol_obj0_opt.grid(sticky='we', row=0, column=4, padx=5, pady=1)
+        #select0_but.grid(sticky='we', row=0, column=3, padx=5, pady=1)
+        pymol_obj0_opt.grid(sticky='we', row=0, column=3, padx=5, pady=1)
         pdb_b_ent.grid(sticky='we', row=1, column=0, padx=5, pady=1)
         pdb_b_but.grid(sticky='we', row=1, column=1, padx=5, pady=1)
         label1.grid(sticky='we', row=1, column=2, padx=5, pady=1)
-        select1_but.grid(sticky='we', row=1, column=3, padx=5, pady=1)
-        pymol_obj1_opt.grid(sticky='we', row=1, column=4, padx=5, pady=1)
+        #select1_but.grid(sticky='we', row=1, column=3, padx=5, pady=1)
+        pymol_obj1_opt.grid(sticky='we', row=1, column=3, padx=5, pady=1)
         pqr_ff_opt.grid(sticky='we', row=2, column=0, padx=5, pady=1)
         pqr_an_but.grid(sticky='w', row=3, column=0, padx=5, pady=1)
         pqr_opt_but.grid(sticky='we', row=4, column=0, padx=5, pady=1)
@@ -876,11 +876,11 @@ class BDPlugin(object):
                                              labelpos='w',
                                              label_text='Selected trajectory index:')
 
-        traj_index_n_ent = Pmw.EntryField(group_analysis, labelpos='wn',
-                                          label_text='Select trajectory index: ',
-                                          value=self.traj_index_n.get(),
-                                          validate={'validator': 'integer', 'min': 1},
-                                          entry_textvariable=self.traj_index_n)
+#        traj_index_n_ent = Pmw.EntryField(group_analysis, labelpos='wn',
+#                                          label_text='Select trajectory index: ',
+#                                          value=self.traj_index_n.get(),
+#                                          validate={'validator': 'integer', 'min': 1},
+#                                          entry_textvariable=self.traj_index_n)
         convert_but = Tkinter.Button(group_analysis, text='Convert to xyz trajectory',
                                      command=self.convertTrajectoryToXYZ)
         load_xyztraj_but = Tkinter.Button(group_analysis, text='Load xyz trajectory',
@@ -892,7 +892,7 @@ class BDPlugin(object):
         self.message_ent.grid(sticky='we', row=1, column=0, columnspan=3, padx=5, pady=1)
         select_index_but.grid(sticky='we',  row=2, column=0, padx=5, pady=1)
         self.messagebar_idx.grid(sticky='we', row=2, column=1, padx=5, pady=1)
-        traj_index_n_ent.grid(sticky='we',  row=3, column=0, padx=5, pady=1)
+        #traj_index_n_ent.grid(sticky='we',  row=3, column=0, padx=5, pady=1)
         convert_but.grid(sticky='we', row=4, column=0, padx=5, pady=1)
         load_xyztraj_but.grid(sticky='we', row=5, column=0, padx=5, pady=1)
         
@@ -1488,7 +1488,7 @@ quit
                    '-nonred -mol0 %s-atoms.pqrxml -mol1 %s-atoms.pqrxml '
                    '-ctypes %s  -dist %f > %s-%s-rxn-pairs.xml'
                    % (self.bd_path.get(), MOL0, MOL1, self.contacts_f.get(),
-                      self.rxn_distance.get()), MOL0, MOL1)
+                      self.rxn_distance.get(), MOL0, MOL1))
         if DEBUG > 2: print(command)
         print("::: Running make_rxn_pairs ...")
         rc = self.runCmd(command)
@@ -1500,7 +1500,7 @@ quit
                   '-pairs %s-%s-rxn-pairs.xml -distance %f '
                   ' -nneeded %d > %s-%s-rxns.xml'
                   % (self.bd_path.get(), MOL0, MOL1, self.rxn_distance.get(),
-                     self.npairs.get()), MOL0, MOL1)
+                     self.npairs.get(), MOL0, MOL1))
         if DEBUG > 2: print(command)
         print("::: Running make_rxn_file ...")
         rc = self.runCmd(command)
@@ -1559,8 +1559,8 @@ quit
             fout.write((nam_simulation_template % 
                        (self.solvent_eps.get(), self.debyel.get(),
                         self.ntraj.get(), self.nthreads.get(),
-                        MOL0 * 3, self.mol0_eps.get(),
-                        MOL1 * 3, self.mol1_eps.get(),
+                        MOL0, MOL0, MOL0, self.mol0_eps.get(),
+                        MOL1, MOL1, MOL1, self.mol1_eps.get(),
                         self.mindx.get(), MOL0, MOL1,
                         self.ntrajo.get(),
                         self.ncopies.get(), self.nbincopies.get(),
@@ -1591,8 +1591,8 @@ quit
     def runBD(self):
         """Start BrownDye simulation either in foreground or background."""
         print("::: Starting BrownDye simulation ...")
-        command = ('%s/nam_simulation %s-%s-simulation.xml >& %s'
-                   % (self.bd_path.get(), MOL0, MOL1, LOGFILE))
+        command = ('%s/nam_simulation %s-%s-simulation.xml'
+                   % (self.bd_path.get(), MOL0, MOL1))
         if self.run_in_background.get():
             p = subprocess.Popen(" nohup %s" % command, shell=True)
             self.jobPID = p.pid
@@ -1605,7 +1605,7 @@ quit
             self.notebook.selectpage('BD Simulation')
             self.logtxt_ent.insert('end', "::: Starting BrownDye simulation ...\n")
             time.sleep(1)
-            tl = MonitorThread(LOGFILE, p, 3600, self.ntraj.get(), self.logtxt_ent,
+            tl = MonitorThread(p, 3600, LOGFILE, self.ntraj.get(), self.logtxt_ent,
                                self.messagebar1, self.messagebar2,
                                self.messagebar3, self.bd_path.get())
             tl.start()
@@ -1687,8 +1687,9 @@ quit
         sel = self.dialog_idx.getcurselection()
         if len(sel) > 0:
             if DEBUG > 1: print("::: Selection: %s" % sel)
-            self.traj_index_n.set(sel)
-            self.messagebar_idx.insert(sel)
+            self.traj_index_n.set(sel[0])
+            #self.messagebar_idx.insert(sel)
+            self.messagebar_idx.message('state', str(sel[0]))
         self.dialog_idx.deactivate(result)
         return
     
@@ -1765,23 +1766,21 @@ class RunThread(Thread):
         self.page.yview('moveto', 1.0)
         p = subprocess.Popen(self.command, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, shell=True)
-        p.wait()
+        #p.wait()
         stdout, stderr = p.communicate()
         self.outlog = stdout
         self.status = p.returncode
-	# try:
-	#  self.page.insert('end',"%s %s" % (out, err))
-        #  self.page.yview('moveto', 1.0)
-        # except:
-	#  self.screwup("Fatal --> No results, so something is wrong")
-   	#  return
-        # os.chdir(current_dir)
+	try:
+            self.page.insert('end',"%s %s" % (stdout, stderr))
+            self.page.yview('moveto', 1.0)
+        except:
+            print("::: Thread error!")
         return
 
 
 class MonitorThread(Thread):
     """Monitor runing BD job and print out progress information."""
-    def __init__(self, logfile, mythread, timeout, totntraj, page,
+    def __init__(self, mythread, timeout, logfile, totntraj, page,
                  messagebar1, messagebar2, messagebar3, bd_path):
         Thread.__init__(self)
         self.logfile = logfile.replace("\\","/")
@@ -1795,48 +1794,65 @@ class MonitorThread(Thread):
         if DEBUG > 2: print("::: self.logfile: %s" % self.logfile)
         self.mythread = mythread
         self.timeout = timeout
+
     def run(self):
         seconds = 0
         readcount = 0 
+        log_fileok = False
+        results_file = 'results.xml'
+        results_fileok = False
         while self.mythread.is_alive() and seconds < self.timeout:
             time.sleep(5)
-            if os.path.getsize(self.logfile) > readcount+20:
-                with open(self.logfile,'r') as f:
-                    f.seek(readcount,0)
+            try:
+                if os.stat(self.logfile).st_size > 0:
+                    log_fileok = True
+            except:
+                print("::: Waiting for %s ..." % self.logfile)
+                log_fileok = False
+            try:
+                if os.stat(results_file).st_size > 0:
+                    results_fileok = True
+            except:
+                print("::: Waiting for %s ..." % results_file)
+                results_fileok = False
+            if log_fileok and os.path.getsize(self.logfile) > readcount + 20:
+                with open(self.logfile, 'r') as f:
+                    f.seek(readcount, 0)
                     while readcount < os.path.getsize(self.logfile):
                         logline = f.readline()
                         if not logline: break
                         print(logline, end='')
                         self.page.insert('end', "%s" % logline)
                         readcount = f.tell()
-
-                seconds = seconds+5
+                seconds = seconds + 5
                 #transfer_status['log'] = 'Running for %d seconds'%seconds
-            with open('results.xml', 'r') as f:
-                results = etree.parse(f)
-                ntraj = results.xpath('//reactions/n-trajectories')[0].text.strip()
-                stuck = results.xpath('//reactions/stuck')[0].text.strip()
-                escaped = results.xpath('//reactions/escaped')[0].text.strip()
-                ncompleted = results.xpath('//reactions/completed/name')[0].text.strip()
-                completed = results.xpath('//reactions/completed/n')[0].text.strip()
-                mymessage = '%s out of %d' % (ntraj, self.totntraj)
-                self.messagebar1.message('state', mymessage)
-                mymessage= '%s / %s / %s' % (completed, escaped, stuck) 
-                self.messagebar2.message('state', mymessage)
-                
-            command = ('cat results.xml | %s/compute_rate_constant'
-                       % (self.bd_path))
-            p = subprocess.Popen(command, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, shell=True)
-            p.wait()
-            stdout, stderr = p.communicate()
-            rates = etree.fromstring(stdout)
-            rate_constant = rates.xpath('//rate-constant/mean')[0].text.strip()
-            rxn_probability = rates.xpath('//reaction-probability/mean')[0].text.strip()
-            mymessage = ('%s / %s' % (rate_constant, rxn_probability))
-            self.messagebar3.message('state', mymessage)
-            
+            if results_fileok:
+                with open(results_file, 'r') as f:
+                    results = etree.parse(f)
+                    ntraj = results.xpath('//reactions/n-trajectories')[0].text.strip()
+                    stuck = results.xpath('//reactions/stuck')[0].text.strip()
+                    escaped = results.xpath('//reactions/escaped')[0].text.strip()
+                    ncompleted = results.xpath('//reactions/completed/name')[0].text.strip()
+                    completed = results.xpath('//reactions/completed/n')[0].text.strip()
+                    mymessage = '%s out of %d' % (ntraj, self.totntraj)
+                    self.messagebar1.message('state', mymessage)
+                    mymessage= '%s / %s / %s' % (completed, escaped, stuck) 
+                    self.messagebar2.message('state', mymessage)
+                command = ('cat %s | %s/compute_rate_constant'
+                           % (results_file, self.bd_path))
+                if DEBUG > 1: print(command)
+                p = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE, shell=True)
+                p.wait()
+                stdout, stderr = p.communicate()
+                rates = etree.fromstring(stdout)
+                rate_constant = rates.xpath('//rate-constant/mean')[0].text.strip()
+                rxn_probability = rates.xpath('//reaction-probability/mean')[0].text.strip()
+                mymessage = ('%s / %s' % (rate_constant, rxn_probability))
+                self.messagebar3.message('state', mymessage)
+
         time.sleep(2)
+        print(self.mythread.is_alive())
         print("::: BrownDye simulation finished.")
         self.page.insert('end', "::: BrownDye simulation finished\n")
         return
