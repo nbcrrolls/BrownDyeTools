@@ -43,12 +43,13 @@ from lxml import etree
 
 DEBUG = 0
 
-__version__ = "0.0.1"
+__version__ = '0.0.1'
+__author__ = 'Robert Konecny <rok@ucsd.edu>'
 
-PDB2PQR_PATH = ''
-APBS_PATH = ''
-BD_PATH = ''
-LOGFILE = 'LOGFILE'
+PDB2PQR_PATH = None
+APBS_PATH = None
+BD_PATH = None
+LOGFILE = 'LOGFILE' # FIXME get rid of this?
 DEFAULT_CONTACTS_FILE = 'protein-protein-contacts-default.xml'
 MOL0 = 'mol0'
 MOL1 = 'mol1'
@@ -114,7 +115,7 @@ class BDPlugin(object):
         self.apbs_path.set(APBS_PATH)
         self.bd_path = Tkinter.StringVar()
         self.bd_path.set(BD_PATH)
-                
+
         # parameters used by pdb2pqr
         self.mol0 = Tkinter.StringVar()
         self.mol1 = Tkinter.StringVar()
@@ -1081,7 +1082,7 @@ class BDPlugin(object):
             parent=self.parent)
         self.contacts_f.set(file_name)
         return
-    
+
     def pdb2pqr(self):
         """Convert PDB to PQR."""
         target_f = '%s.pdb' % MOL0
@@ -1113,9 +1114,11 @@ class BDPlugin(object):
         if self.pqr_assign_only.get(): assign_only = '--assign-only'
         pqr_options = ('%s %s --ff=%s' %
                        (assign_only, self.pdb2pqr_opt.get(), self.pqr_ff.get()))
+        pdb2pqr_exe = '%s/pdb2pqr' % self.pdb2pqr_path.get()
+        if not self.check_exe(pdb2pqr_exe): return
         for i in [MOL0, MOL1]:
-            command = ('%s/pdb2pqr %s %s.pdb %s.pqr' %
-                       (self.pdb2pqr_path.get(), pqr_options, i, i))
+            command = ('%s %s %s.pdb %s.pqr' %
+                       (pdb2pqr_exe, pqr_options, i, i))
             if DEBUG > 2: print(command)
             print("::: Running pdb2pqr on %s ..." % i)
             rc = self.runCmd(command)
@@ -1159,7 +1162,8 @@ end
 print elecEnergy 1 end
 quit
 """
-
+        apbs_exe = '%s/apbs' % self.apbs_path.get()
+        if not self.check_exe(apbs_exe): return
         for i in [MOL0, MOL1]:
             pqr_filename = '%s.pqr' % i
             # psize = Psize()
@@ -1199,7 +1203,7 @@ quit
                              self.swin.get(), self.system_temp.get(),
                              dx_filename)))
 
-            command = '%s/apbs %s.in' % (self.apbs_path.get(), i)
+            command = '%s %s.in' % (apbs_exe, i)
             if DEBUG > 2:
                 print(command)
                 print(grid_points)
@@ -1218,9 +1222,11 @@ quit
 
     def runPqr2xml(self):
         """Run pqr2xml on mol0 and mol1 PQR files. """
+        pqr2xml_exe = '%s/pqr2xml' % self.bd_path.get()
+        if not self.check_exe(pqr2xml_exe): return
         for i in [MOL0, MOL1]:
-            command = ('%s/pqr2xml < %s.pqr > %s-atoms.pqrxml'
-                       % (self.bd_path.get(), i, i))
+            command = ('%s < %s.pqr > %s-atoms.pqrxml'
+                       % (pqr2xml_exe, i, i))
             if DEBUG > 2: print(command)
             print("::: Running pqr2xml on %s ..." % i)
             rc = self.runCmd(command)
@@ -1592,8 +1598,10 @@ quit
     def runBD(self):
         """Start BrownDye simulation either in foreground or background."""
         print("::: Starting BrownDye simulation ...")
-        command = ('%s/nam_simulation %s-%s-simulation.xml'
-                   % (self.bd_path.get(), MOL0, MOL1))
+        nam_simulation_exe = '%s/nam_simulation' % self.bd_path.get()
+        if not self.check_exe(nam_simulation_exe): return
+        command = ('%s %s-%s-simulation.xml'
+                   % (nam_simulation_exe, MOL0, MOL1))
         if self.run_in_background.get():
             p = subprocess.Popen(" nohup %s" % command, shell=True)
             self.jobPID = p.pid
@@ -1737,6 +1745,15 @@ quit
             print("::: Loading xyz trajectory failed!")
             print("::: Error: %s" % e)
         return
+
+    def check_exe(self, command):
+        """Check if command exists and is executable."""
+        if os.path.isfile(command) and os.access(command, os.X_OK):
+            is_exe = True
+        else:
+            is_exe = False
+            print("::: Can't find %s!" % command)
+        return is_exe
         
     def execute(self, result):
         """Quid BD plugin."""
@@ -1809,13 +1826,13 @@ class MonitorThread(Thread):
                 if os.stat(self.logfile).st_size > 0:
                     log_fileok = True
             except:
-                print("::: Waiting for %s ..." % self.logfile)
+                if DEBUG > 2: print("::: Waiting for %s ..." % self.logfile)
                 log_fileok = False
             try:
                 if os.stat(results_file).st_size > 0:
                     results_fileok = True
             except:
-                print("::: Waiting for %s ..." % results_file)
+                if DEBUG > 2: print("::: Waiting for %s ..." % results_file)
                 results_fileok = False
             if log_fileok and os.path.getsize(self.logfile) > readcount + 20:
                 with open(self.logfile, 'r') as f:
