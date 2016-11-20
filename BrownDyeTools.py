@@ -41,7 +41,7 @@ import Pmw
 from threading import Thread
 from lxml import etree
 
-DEBUG = 5
+DEBUG = 0
 
 __version__ = "0.0.1"
 
@@ -87,7 +87,7 @@ class DummyPymol(object):
     cmd = Cmd()
 
 try:
-    import pymold
+    import pymol
 except ImportError:
     print("::: Pymol import failed - Pymol features not available!")
     pymol = DummyPymol()
@@ -871,6 +871,7 @@ class BDPlugin(object):
         self.dialog_idx.withdraw()
         select_index_but = Tkinter.Button(group_analysis, text='Select trajectory index',
                                           command=self.dialog_idx.activate)
+
         self.messagebar_idx = Pmw.MessageBar(group_analysis,
                                              entry_width=20, entry_relief='sunken',
                                              labelpos='w',
@@ -1671,6 +1672,7 @@ quit
                    % (len(traj_index), str(traj_index)))
         self.message_ent.insert('end', "%s" % logline)
         # number of frames
+        self.dialog_idx.clear()
         for i in traj_index:
             with open(self.traj_f.get(), 'r') as f:
                 d = etree.parse(f)
@@ -1840,7 +1842,6 @@ class MonitorThread(Thread):
                     self.messagebar2.message('state', mymessage)
                 command = ('cat %s | %s/compute_rate_constant'
                            % (results_file, self.bd_path))
-                if DEBUG > 1: print(command)
                 p = subprocess.Popen(command, stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE, shell=True)
                 p.wait()
