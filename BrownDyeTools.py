@@ -53,6 +53,50 @@ DEFAULT_CONTACTS_FILE = 'protein-protein-contacts-default.xml'
 MOL0 = 'mol0'
 MOL1 = 'mol1'
 
+pqr_defaults = {
+    'force_field': 'parse',
+    'options': '--apbs-input',
+}
+
+psize_defaults = {
+    'cfac': 3.0,
+    'fadd': 50.0,
+    'space': 0.5,
+}
+apbs_defaults = {
+    'mode': 'lpbe',
+    'pdie': 4.0,
+    'sdie': 78.0,
+    'srfm': 'smol',
+    'chgm': 'spl2',
+    'bcfl': 'sdh',
+    'sdens': 10.,
+    'swin': 0.3,
+    'srad': 1.4,
+    'temp': 298.15,
+    'ion_charge': [1, -1],
+    'ion_conc': [0.15, 0.15],
+    'ion_radius': [1.0, 1.0],
+}
+
+bd_defaults = {
+    'ntraj': 100,
+    'nthreads': 1,
+    'mindx': 0.2,
+    'sdie': apbs_defaults['sdie'],
+    'pdie0': apbs_defaults['pdie'],
+    'pdie1': apbs_defaults['pdie'],
+    'debyel': 7.86, # FIXME
+    'ntrajo': 1,
+    'ncopies': 200,
+    'nbincopies': 200,
+    'nsteps': 10000,
+    'westeps': 10000,
+    'maxnsteps': 10000,
+    'rxn_distance': 5.0,
+    'npairs': 3,
+}
+
 if DEBUG > 0:
     PDB2PQR_PATH = '/opt/pdb2pqr-linux-bin64-2.1.0/'
     APBS_PATH = '/export1/Builds/SandBox-2016.10.11-14.05/bin/'
@@ -87,7 +131,7 @@ class DummyPymol(object):
     cmd = Cmd()
 
 try:
-    import pymol
+    import pymold
 except ImportError:
     print("::: Pymol import failed - Pymol features not available!")
     pymol = DummyPymol()
@@ -129,11 +173,11 @@ class BDPlugin(object):
         self.mol0_object.set(None)
         self.mol1_object.set(None)
         self.pdb2pqr_opt = Tkinter.StringVar()
-        self.pdb2pqr_opt.set('--apbs-input')
+        self.pdb2pqr_opt.set(pqr_defaults['options'])
         self.pqr_assign_only = Tkinter.BooleanVar()
         self.pqr_assign_only.set(True)
         self.pqr_ff = Tkinter.StringVar()
-        self.pqr_ff.set('parse')
+        self.pqr_ff.set(pqr_defaults['force_field'])
 
         # APBS parameters and defaults
         self.dime0 = [Tkinter.IntVar() for _ in range(3)]
@@ -150,33 +194,33 @@ class BDPlugin(object):
         [self.fglen1[x].set(0.0) for x in range(3)]
 
         self.apbs_mode = Tkinter.StringVar()
-        self.apbs_mode.set('lpbe')
+        self.apbs_mode.set(apbs_defaults['mode'])
         self.bcfl = Tkinter.StringVar()
-        self.bcfl.set('sdh')
+        self.bcfl.set(apbs_defaults['bcfl'])
         self.ion_charge = [Tkinter.IntVar() for _ in range(2)]
         self.ion_conc = [Tkinter.DoubleVar() for _ in range(2)]
         self.ion_rad = [Tkinter.DoubleVar() for _ in range(2)]
-        self.ion_charge[0].set(1)
-        self.ion_charge[1].set(-1)
-        [self.ion_conc[x].set(0.15) for x in range(2)]
-        [self.ion_rad[x].set(1.0) for x in range(2)]
+        self.ion_charge[0].set(apbs_defaults['ion_charge'][0])
+        self.ion_charge[1].set(apbs_defaults['ion_charge'][1])
+        [self.ion_conc[x].set(apbs_defaults['ion_conc'][x]) for x in range(2)]
+        [self.ion_rad[x].set(apbs_defaults['ion_radius'][x]) for x in range(2)]
 
         self.interior_dielectric = Tkinter.DoubleVar()
-        self.interior_dielectric.set(4.0)
+        self.interior_dielectric.set(apbs_defaults['pdie'])
         self.solvent_dielectric = Tkinter.DoubleVar()
-        self.solvent_dielectric.set(78.0)
+        self.solvent_dielectric.set(apbs_defaults['sdie'])
         self.chgm = Tkinter.StringVar()
-        self.chgm.set('spl2')
+        self.chgm.set(apbs_defaults['chgm'])
         self.sdens = Tkinter.DoubleVar()
-        self.sdens.set(10.0)
+        self.sdens.set(apbs_defaults['sdens'])
         self.swin = Tkinter.DoubleVar()
-        self.swin.set(0.3)
+        self.swin.set(apbs_defaults['swin'])
         self.srfm = Tkinter.StringVar()
-        self.srfm.set('smol')
+        self.srfm.set(apbs_defaults['srfm'])
         self.srad = Tkinter.DoubleVar()
-        self.srad.set(1.4)
+        self.srad.set(apbs_defaults['srad'])
         self.system_temp = Tkinter.DoubleVar()
-        self.system_temp.set(298.15)
+        self.system_temp.set(apbs_defaults['temp'])
 
         # reaction criteria
         self.contacts_f = Tkinter.StringVar()
@@ -184,9 +228,9 @@ class BDPlugin(object):
         self.default_contacts_f = Tkinter.BooleanVar()
         self.default_contacts_f.set(False)
         self.rxn_distance = Tkinter.DoubleVar()
-        self.rxn_distance.set(5.0)
+        self.rxn_distance.set(bd_defaults['rxn_distance'])
         self.npairs = Tkinter.IntVar()
-        self.npairs.set(3)
+        self.npairs.set(bd_defaults['npairs'])
         
         # BD parameters and defaults
         self.solvent_eps = Tkinter.DoubleVar()
@@ -196,44 +240,35 @@ class BDPlugin(object):
         self.mol1_eps = Tkinter.DoubleVar()
         self.mol1_eps.set(self.interior_dielectric.get())
         self.debyel = Tkinter.DoubleVar()
-        self.debyel.set(7.86) #FIXME -> parse io.mc
+        self.debyel.set(bd_defaults['debyel'])
         self.ntraj = Tkinter.IntVar()
-        self.ntraj.set(100)
+        self.ntraj.set(bd_defaults['ntraj'])
         self.nthreads = Tkinter.IntVar()
-        self.nthreads.set(1)
+        self.nthreads.set(bd_defaults['nthreads'])
         self.mindx = Tkinter.DoubleVar()
-        self.mindx.set(0.2)
+        self.mindx.set(bd_defaults['mindx'])
         self.ntrajo = Tkinter.IntVar()
-        self.ntrajo.set(1)
+        self.ntrajo.set(bd_defaults['ntrajo'])
         self.ncopies = Tkinter.IntVar()
-        self.ncopies.set(200)
+        self.ncopies.set(bd_defaults['ncopies'])
         self.nbincopies = Tkinter.IntVar()
-        self.nbincopies.set(200)
+        self.nbincopies.set(bd_defaults['nbincopies'])
         self.nsteps = Tkinter.IntVar()
-        self.nsteps.set(10000)
+        self.nsteps.set(bd_defaults['nsteps'])
         self.westeps = Tkinter.IntVar()
-        self.westeps.set(10000)
+        self.westeps.set(bd_defaults['westeps'])
         self.maxnsteps = Tkinter.IntVar()
-        self.maxnsteps.set(100000)
+        self.maxnsteps.set(bd_defaults['maxnsteps'])
 
         self.run_in_background = Tkinter.BooleanVar()
         self.run_in_background.set(False)
         
-        # self.pdb_fn        = Tkinter.StringVar()
-        # self.pymol_sel     = Tkinter.StringVar()
-        # self.msms_bin      = Tkinter.StringVar()
-        # self.pdb2xyzr_bin  = Tkinter.StringVar()
-        # self.pdb2xyzrn_bin = Tkinter.StringVar()
-        # self.tmp_dir       = Tkinter.StringVar()
-
-        # self.cleanup_saved_pymol_sel = Tkinter.BooleanVar()
-        # self.cleanup_saved_pymol_sel.set(True) # by default, clean up
-
         # Analysis
         self.traj_f = Tkinter.StringVar()
         self.traj_f.set('traj0.xml')
         self.traj_index_n = Tkinter.IntVar()
         self.traj_index_n.set(1)
+
         #######################################################################
         # Main code
         w = Tkinter.Label(self.dialog.interior(),
@@ -244,7 +279,7 @@ class BDPlugin(object):
                           background='black', foreground='white')
         w.pack(expand=1, fill='both', padx=10, pady=5)
 
-        # make a notebook
+        # create a notebook
         self.notebook = Pmw.NoteBook(self.dialog.interior())
         self.notebook.pack(fill='both', expand=1, padx=10, pady=10)
 
@@ -310,22 +345,7 @@ class BDPlugin(object):
                                    entry_textvariable=self.mol0)
         pdb_0_but = Tkinter.Button(group_pqr, text='Browse...',
                                    command=self.getPDBMol0)
-
         label0 = Tkinter.Label(group_pqr, text='or')
-
-#        sel_list = []
-#        self.dialog0 = Pmw.SelectionDialog(page,
-#                                           title='Molecule 0',
-#                                           buttons=('OK', 'Cancel'),
-#                                           defaultbutton='OK',
-#                                           scrolledlist_labelpos='n',
-#                                           label_text='Select molecule 0',
-#                                           scrolledlist_items=sel_list,
-#                                           command=self.selectMol0)
-#        self.dialog0.withdraw()
-#        select0_but = Tkinter.Button(group_pqr, text='Select molecule 0',
-#                                     command=self.dialog0Call)
-
         pymol_obj0_opt = Pmw.OptionMenu(group_pqr, labelpos='w',
                                         label_text='Select molecule 0: ',
                                         menubutton_textvariable=self.mol0_object,
@@ -337,27 +357,11 @@ class BDPlugin(object):
         pdb_1_but = Tkinter.Button(group_pqr, text='Browse...',
                                    command=self.getPDBMol1)
         label1 = Tkinter.Label(group_pqr, text='or')
-#        self.dialog1 = Pmw.SelectionDialog(page,
-#                                           title='Molecule 1',
-#                                           buttons=('OK', 'Cancel'),
-#                                           defaultbutton='OK',
-#                                           scrolledlist_labelpos='n',
-#                                           label_text='Select molecule 1',
-#                                           scrolledlist_items=sel_list,
-#                                           command=self.selectMol1)
-#        self.dialog1.withdraw()
-#        select1_but = Tkinter.Button(group_pqr, text='Select molecule 1',
-#                                     command=self.dialog1Call)
         pymol_obj1_opt = Pmw.OptionMenu(group_pqr, labelpos='w',
                                         label_text='Select molecule 1: ',
                                         menubutton_textvariable=self.mol1_object,
                                         menubutton_width=7,
                                         items=(['None'] + pymol.cmd.get_names("all")))
-        #pqr_opt = Pmw.EntryField(group_pqr,
-        #                         label_text='pdb2pqr options:', labelpos='wn',
-        #                         value=self.pdb2pqr_opt.get(),
-        #                         entry_textvariable=self.pdb2pqr_opt,
-        #                         entry_width=30)
         pqr_ff_opt = Pmw.OptionMenu(group_pqr, labelpos='w',
                                     label_text='Force field: ',
                                     menubutton_textvariable=self.pqr_ff,
@@ -370,9 +374,7 @@ class BDPlugin(object):
                                          onvalue=True, offvalue=False)
         pqr_opt_but = Tkinter.Button(group_pqr, text='Create PQR files',
                                      command=self.pdb2pqr)
-
         label2 = Tkinter.Label(page, text='or load your PQR files:')
-
         pqr_0_ent = Pmw.EntryField(page,
                                    label_text='Molecule 0 PQR file:', labelpos='wn',
                                    entry_textvariable=self.pqr0)
@@ -387,12 +389,10 @@ class BDPlugin(object):
         pdb_0_ent.grid(     sticky='we', row=0, column=0, padx=5, pady=1)
         pdb_0_but.grid(     sticky='we', row=0, column=1, padx=5, pady=1)
         label0.grid(        sticky='we', row=0, column=2, padx=5, pady=1)
-        #select0_but.grid(sticky='we', row=0, column=3, padx=5, pady=1)
         pymol_obj0_opt.grid(sticky='we', row=0, column=3, padx=5, pady=1)
         pdb_1_ent.grid(     sticky='we', row=1, column=0, padx=5, pady=1)
         pdb_1_but.grid(     sticky='we', row=1, column=1, padx=5, pady=1)
         label1.grid(        sticky='we', row=1, column=2, padx=5, pady=1)
-        #select1_but.grid(sticky='we', row=1, column=3, padx=5, pady=1)
         pymol_obj1_opt.grid(sticky='we', row=1, column=3, padx=5, pady=1)
         pqr_ff_opt.grid(    sticky='we', row=2, column=0, padx=5, pady=1)
         pqr_an_but.grid(    sticky='we', row=3, column=0, padx=5, pady=1)
@@ -402,7 +402,6 @@ class BDPlugin(object):
         pqr_0_but.grid(     sticky='we', row=6, column=1, padx=5, pady=1)
         pqr_1_ent.grid(     sticky='we', row=7, column=0, padx=5, pady=1)
         pqr_1_but.grid(     sticky='we', row=7, column=1, padx=5, pady=1)
-
 
         ############
         # Tab: APBS
@@ -422,13 +421,13 @@ class BDPlugin(object):
                                      validate={'validator': 'integer', 'min': 0},
                                      entry_textvariable=self.dime0[0],
                                      entry_width=5)
-        dime1_0_ent = Pmw.EntryField(group_grids, labelpos='w',
+        dime0_1_ent = Pmw.EntryField(group_grids, labelpos='w',
                                      label_text='',
                                      value=self.dime0[1].get(),
                                      validate={'validator': 'integer', 'min': 0},
                                      entry_textvariable=self.dime0[1],
                                      entry_width=5)
-        dime2_0_ent = Pmw.EntryField(group_grids, labelpos='w',
+        dime0_2_ent = Pmw.EntryField(group_grids, labelpos='w',
                                      label_text='',
                                      value=self.dime0[2].get(),
                                      validate={'validator': 'integer', 'min': 0},
@@ -440,13 +439,13 @@ class BDPlugin(object):
                                       validate={'validator': 'real', 'min': 0.00},
                                       entry_textvariable=self.cglen0[0],
                                       entry_width=8)
-        cglen1_0_ent = Pmw.EntryField(group_grids, labelpos='w',
+        cglen0_1_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
                                       value=self.cglen0[1].get(),
                                       validate={'validator': 'real', 'min': 0.00},
                                       entry_textvariable=self.cglen0[1],
                                       entry_width=8)
-        cglen2_0_ent = Pmw.EntryField(group_grids, labelpos='w',
+        cglen0_2_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
                                       value=self.cglen0[2].get(),
                                       validate={'validator': 'real', 'min': 0.00},
@@ -458,13 +457,13 @@ class BDPlugin(object):
                                       validate={'validator': 'real', 'min': 0.00},
                                       entry_textvariable=self.fglen0[0],
                                       entry_width=8)
-        fglen1_0_ent = Pmw.EntryField(group_grids, labelpos='w',
+        fglen0_1_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
                                       value=self.fglen0[1].get(),
                                       validate={'validator': 'real', 'min': 0.00},
                                       entry_textvariable=self.fglen0[1],
                                       entry_width=8)
-        fglen2_0_ent = Pmw.EntryField(group_grids, labelpos='w',
+        fglen0_2_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
                                       value=self.fglen0[2].get(),
                                       validate={'validator': 'real', 'min': 0.00},
@@ -475,7 +474,7 @@ class BDPlugin(object):
                                        command=self.getSizemol0)
 
         label1 = Tkinter.Label(group_grids, text='Molecule 1')
-        dime0_1_ent = Pmw.EntryField(group_grids, labelpos='w',
+        dime1_0_ent = Pmw.EntryField(group_grids, labelpos='w',
                                      label_text='dime: ',
                                      value=self.dime1[0].get(),
                                      validate={'validator': 'integer', 'min': 0},
@@ -487,14 +486,14 @@ class BDPlugin(object):
                                      validate={'validator': 'integer', 'min': 0},
                                      entry_textvariable=self.dime1[1],
                                      entry_width=5)
-        dime2_1_ent = Pmw.EntryField(group_grids, labelpos='w',
+        dime1_2_ent = Pmw.EntryField(group_grids, labelpos='w',
                                      label_text='',
                                      value=self.dime1[2].get(),
                                      validate={'validator': 'integer', 'min': 0},
                                      entry_textvariable=self.dime1[2],
                                      entry_width=5)
 
-        cglen0_1_ent = Pmw.EntryField(group_grids, labelpos='w',
+        cglen1_0_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='cglen: ',
                                       value=self.cglen1[0].get(),
                                       validate={'validator': 'real', 'min': 0.0},
@@ -506,13 +505,13 @@ class BDPlugin(object):
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.cglen1[1],
                                       entry_width=8)
-        cglen2_1_ent = Pmw.EntryField(group_grids, labelpos='w',
+        cglen1_2_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
                                       value=self.cglen1[2].get(),
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.cglen1[2],
                                       entry_width=8)
-        fglen0_1_ent = Pmw.EntryField(group_grids, labelpos='w',
+        fglen1_0_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='fglen: ',
                                       value=self.fglen1[0].get(),
                                       validate={'validator': 'real', 'min': 0.0},
@@ -524,7 +523,7 @@ class BDPlugin(object):
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.fglen1[1],
                                       entry_width=8)
-        fglen2_1_ent = Pmw.EntryField(group_grids, labelpos='w',
+        fglen1_2_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
                                       value=self.fglen1[2].get(),
                                       validate={'validator': 'real', 'min': 0.0},
@@ -537,26 +536,26 @@ class BDPlugin(object):
 
         label0.grid(sticky='we', row=0, column=0, padx=5, pady=10)
         dime0_0_ent.grid(sticky='we', row=1, column=0, padx=5, pady=1)
-        dime1_0_ent.grid(sticky='we', row=1, column=1, padx=5, pady=1)
-        dime2_0_ent.grid(sticky='we', row=1, column=2, padx=5, pady=1)
+        dime0_1_ent.grid(sticky='we', row=1, column=1, padx=5, pady=1)
+        dime0_2_ent.grid(sticky='we', row=1, column=2, padx=5, pady=1)
         cglen0_0_ent.grid(sticky='we', row=2, column=0, padx=5, pady=1)
-        cglen1_0_ent.grid(sticky='we', row=2, column=1, padx=5, pady=1)
-        cglen2_0_ent.grid(sticky='we', row=2, column=2, padx=5, pady=1)
+        cglen0_1_ent.grid(sticky='we', row=2, column=1, padx=5, pady=1)
+        cglen0_2_ent.grid(sticky='we', row=2, column=2, padx=5, pady=1)
         fglen0_0_ent.grid(sticky='we', row=3, column=0, padx=5, pady=1)
-        fglen1_0_ent.grid(sticky='we', row=3, column=1, padx=5, pady=1)
-        fglen2_0_ent.grid(sticky='we', row=3, column=2, padx=5, pady=1)
+        fglen0_1_ent.grid(sticky='we', row=3, column=1, padx=5, pady=1)
+        fglen0_2_ent.grid(sticky='we', row=3, column=2, padx=5, pady=1)
         get_size0_but.grid(sticky='we', row=4, column=2, padx=5, pady=1)
 
         label1.grid(sticky='we', row=5, column=0, padx=5, pady=10)
-        dime0_1_ent.grid(sticky='we', row=6, column=0, padx=5, pady=1)
+        dime1_0_ent.grid(sticky='we', row=6, column=0, padx=5, pady=1)
         dime1_1_ent.grid(sticky='we', row=6, column=1, padx=5, pady=1)
-        dime2_1_ent.grid(sticky='we', row=6, column=2, padx=5, pady=1)
-        cglen0_1_ent.grid(sticky='we', row=7, column=0, padx=5, pady=1)
+        dime1_2_ent.grid(sticky='we', row=6, column=2, padx=5, pady=1)
+        cglen1_0_ent.grid(sticky='we', row=7, column=0, padx=5, pady=1)
         cglen1_1_ent.grid(sticky='we', row=7, column=1, padx=5, pady=1)
-        cglen2_1_ent.grid(sticky='we', row=7, column=2, padx=5, pady=1)
-        fglen0_1_ent.grid(sticky='we', row=8, column=0, padx=5, pady=1)
+        cglen1_2_ent.grid(sticky='we', row=7, column=2, padx=5, pady=1)
+        fglen1_0_ent.grid(sticky='we', row=8, column=0, padx=5, pady=1)
         fglen1_1_ent.grid(sticky='we', row=8, column=1, padx=5, pady=1)
-        fglen2_1_ent.grid(sticky='we', row=8, column=2, padx=5, pady=1)
+        fglen1_2_ent.grid(sticky='we', row=8, column=2, padx=5, pady=1)
 
         get_size1_but.grid(sticky='we', row=9, column=2, padx=5, pady=1)
 
@@ -819,7 +818,6 @@ class BDPlugin(object):
                                       text='Run job in background', 
                                       variable=self.run_in_background,
                                       onvalue=True, offvalue=False)
-
         run_bd_but = Tkinter.Button(group_sim,
                                     text="Start BD simulation", command=self.runBD)
         kill_bd_but = Tkinter.Button(group_sim,
@@ -832,13 +830,11 @@ class BDPlugin(object):
                                           entry_width=20, entry_relief='sunken',
                                           labelpos='w',
                                           label_text='Completed events / escaped / stuck:')
-
         self.messagebar3 = Pmw.MessageBar(group_sim,
                                           entry_width=20, entry_relief='sunken',
                                           labelpos='w',
                                           label_text=('Calculated reaction rate '
                                                       'and probability:'))
-
         self.logtxt_ent = Pmw.ScrolledText(group_sim, labelpos='wn',
                                       borderframe=5, 
                                       vscrollmode='dynamic',
@@ -873,7 +869,6 @@ class BDPlugin(object):
                                        command=self.loadTrajectoryFile)
         analyze_but = Tkinter.Button(group_analysis, text='Analyze',
                                        command=self.analyzeTrajectoryFile)
-
         self.message_ent = Pmw.ScrolledText(group_analysis, labelpos='wn',
                                             borderframe=5, 
                                             vscrollmode='dynamic',
@@ -882,7 +877,6 @@ class BDPlugin(object):
                                             text_wrap='word',
                                             text_background='#000000',
                                             text_foreground='white')
-
         self.index_list = [None]
         self.dialog_idx = Pmw.SelectionDialog(page,
                                               title='Trajectory index',
@@ -895,17 +889,10 @@ class BDPlugin(object):
         self.dialog_idx.withdraw()
         select_index_but = Tkinter.Button(group_analysis, text='Select trajectory index',
                                           command=self.dialog_idx.activate)
-
         self.messagebar_idx = Pmw.MessageBar(group_analysis,
                                              entry_width=20, entry_relief='sunken',
                                              labelpos='w',
                                              label_text='Selected trajectory index:')
-
-#        traj_index_n_ent = Pmw.EntryField(group_analysis, labelpos='wn',
-#                                          label_text='Select trajectory index: ',
-#                                          value=self.traj_index_n.get(),
-#                                          validate={'validator': 'integer', 'min': 1},
-#                                          entry_textvariable=self.traj_index_n)
         convert_but = Tkinter.Button(group_analysis, text='Convert to xyz trajectory',
                                      command=self.convertTrajectoryToXYZ)
         load_xyztraj_but = Tkinter.Button(group_analysis, text='Load xyz trajectory',
@@ -1659,15 +1646,15 @@ quit
             self.logtxt_ent.insert('end', "::: Starting BrownDye simulation in background.\n")
             self.logtxt_ent.insert('end', "::: Job PID: %d \n" % self.jobPID)
         else:
-            p = RunThread(self.projectDir.get(), command, self.logtxt_ent)
-            p.start()
+            thread = RunThread(self.projectDir.get(), command, self.logtxt_ent)
+            thread.start()
             self.notebook.selectpage('BD Simulation')
             self.logtxt_ent.insert('end', "::: Starting BrownDye simulation ...\n")
             time.sleep(1)
-            tl = MonitorThread(p, 3600, LOGFILE, self.ntraj.get(), self.logtxt_ent,
+            tm = MonitorThread(thread, 3600, LOGFILE, self.ntraj.get(), self.logtxt_ent,
                                self.messagebar1, self.messagebar2,
                                self.messagebar3, self.bd_path.get())
-            tl.start()
+            tm.start()
         return
 
     def killBD(self):
@@ -1920,18 +1907,18 @@ class MonitorThread(Thread):
                 self.messagebar3.message('state', mymessage)
 
         time.sleep(2)
-        print(self.mythread.is_alive())
+        if DEBUG > 2: print(self.mythread.is_alive())
         print("::: BrownDye simulation finished.")
         self.page.insert('end', "::: BrownDye simulation finished\n")
         return
-    
+
 class StopThread(Thread):
     """Kill running thread."""
     def __init__(self, mythread):
         self.pid = mythread.pid
         os.system('kill -9 %d' % self.pid)
         return
-    
+
 class Psize:
     """Calculate grid size dimensions for a pqr molecule.
     
@@ -1942,7 +1929,7 @@ class Psize:
     CFAC 1.7 -> 3.0
     FADD 20 -> 50
 
-    This significantly increases the grid size and thus memory requirements.
+    This significantly increases the grid size and thus memory requirements, however.
     """
     def __init__(self):
         self.constants = {"CFAC": 3.0, "FADD": 50, "SPACE": 0.50,
@@ -1965,8 +1952,8 @@ class Psize:
 
     def parseInput(self, filename):
         """Parse input structure file in PDB or PQR format."""
-        file = open(filename, "r")
-        self.parseLines(file.readlines())
+        with open(filename, "r") as file:
+            self.parseLines(file.readlines())
 
     def parseLines(self, lines):
         """Parse the lines."""
