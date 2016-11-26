@@ -344,7 +344,7 @@ class BDPlugin(object):
                                    label_text='Molecule 0 PDB file:', labelpos='wn',
                                    entry_textvariable=self.mol0)
         pdb_0_but = Tkinter.Button(group_pqr, text='Browse...',
-                                   command=self.getPDBMol0)
+                                   command=lambda: self.getPDBMol(0))
         label0 = Tkinter.Label(group_pqr, text='or')
         pymol_obj0_opt = Pmw.OptionMenu(group_pqr, labelpos='w',
                                         label_text='Select molecule 0: ',
@@ -355,7 +355,7 @@ class BDPlugin(object):
                                    label_text='Molecule 1 PDB file:', labelpos='wn',
                                    entry_textvariable=self.mol1)
         pdb_1_but = Tkinter.Button(group_pqr, text='Browse...',
-                                   command=self.getPDBMol1)
+                                   command=lambda: self.getPDBMol(1))
         label1 = Tkinter.Label(group_pqr, text='or')
         pymol_obj1_opt = Pmw.OptionMenu(group_pqr, labelpos='w',
                                         label_text='Select molecule 1: ',
@@ -1005,24 +1005,18 @@ class BDPlugin(object):
         self.bd_path.set(d)
         return
 
-    def getPDBMol0(self):
-        """Get molecule 0 filename."""
+    def getPDBMol(self, n):
+        """Get molecule 0/1 PDB filename."""
         file_name = tkFileDialog.askopenfilename(
             title='PDB File', initialdir='',
             filetypes=[('pdb files', '*.pdb *.ent'), ('all files', '*')],
             parent=self.parent)
-        self.mol0.set(file_name)
+        if n == 0:
+            self.mol0.set(file_name)
+        else:
+            self.mol1.set(file_name)
         return
         
-    def getPDBMol1(self):
-        """Get molecule 1 filename."""
-        file_name = tkFileDialog.askopenfilename(
-            title='PDB File', initialdir='',
-            filetypes=[('pdb files', '*.pdb *.ent'), ('all files', '*')],
-            parent=self.parent)
-        self.mol1.set(file_name)
-        return
-
     def selectMol0(self, result):
         sel = self.dialog0.getcurselection()
         if len(sel) > 0: print("::: Selection: %s" % sel)
