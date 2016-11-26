@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-18 21:41:33
+# Last modified: 2016-11-25 14:44:04
 #
 '''BrownDye plugin for Pymol
 
@@ -425,31 +425,31 @@ class BDPlugin(object):
                                      label_text='',
                                      value=self.dime0[1].get(),
                                      validate={'validator': 'integer', 'min': 0},
-                                     entry_textvariable=self.dime0[1],
+                                     # entry_textvariable=self.dime0[1],
                                      entry_width=5)
         dime0_2_ent = Pmw.EntryField(group_grids, labelpos='w',
                                      label_text='',
                                      value=self.dime0[2].get(),
                                      validate={'validator': 'integer', 'min': 0},
-                                     entry_textvariable=self.dime0[2],
+                                     # entry_textvariable=self.dime0[2],
                                      entry_width=5)
         cglen0_0_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='cglen: ',
-                                      value=self.cglen0[0].get(),
+                                      value='%5.3f' % self.cglen0[0].get(),
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.cglen0[0],
+                                      # entry_textvariable=self.cglen0[0],
                                       entry_width=8)
         cglen0_1_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
                                       value=self.cglen0[1].get(),
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.cglen0[1],
+                                      # entry_textvariable=self.cglen0[1],
                                       entry_width=8)
         cglen0_2_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
                                       value=self.cglen0[2].get(),
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.cglen0[2],
+                                      # entry_textvariable=self.cglen0[2],
                                       entry_width=8)
         fglen0_0_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='fglen: ',
