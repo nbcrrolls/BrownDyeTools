@@ -320,16 +320,17 @@ class BDPlugin(object):
                                      command=self.getBDpath)
 
         # arrange widgets using grid
-        project_path_ent.grid(sticky='we', row=1, column=0, padx=5, pady=5)
-        project_path_but.grid(sticky='we', row=1, column=1, padx=5, pady=5)
-        label.grid(           sticky='we', row=1, column=2, padx=5, pady=10)
-        project_path_b_but.grid(sticky='we', row=1, column=3, padx=5, pady=5)
-        pdb2pqr_path_ent.grid(sticky='we', row=2, column=0, padx=5, pady=5)
-        pdb2pqr_path_but.grid(sticky='we', row=2, column=1, padx=5, pady=5)
-        apbs_path_ent.grid(   sticky='we', row=3, column=0, padx=5, pady=5)
-        apbs_path_but.grid(   sticky='we', row=3, column=1, padx=5, pady=5)
-        bd_path_ent.grid(     sticky='we', row=4, column=0, padx=5, pady=5)
-        bd_path_but.grid(     sticky='we', row=4, column=1, padx=5, pady=5)
+        pref = dict(padx=5, pady=5)
+        project_path_ent.grid(sticky='we', row=1, column=0, **pref)
+        project_path_but.grid(sticky='we', row=1, column=1, **pref)
+        label.grid(           sticky='we', row=1, column=2, **pref)
+        project_path_b_but.grid(sticky='we', row=1, column=3, **pref)
+        pdb2pqr_path_ent.grid(sticky='we', row=2, column=0, **pref)
+        pdb2pqr_path_but.grid(sticky='we', row=2, column=1, **pref)
+        apbs_path_ent.grid(   sticky='we', row=3, column=0, **pref)
+        apbs_path_but.grid(   sticky='we', row=3, column=1, **pref)
+        bd_path_ent.grid(     sticky='we', row=4, column=0, **pref)
+        bd_path_but.grid(     sticky='we', row=4, column=1, **pref)
         config.columnconfigure(0, weight=8)
         config.columnconfigure(1, weight=2)
 
@@ -386,22 +387,22 @@ class BDPlugin(object):
         pqr_1_but = Tkinter.Button(page, text='Browse...',
                                    command=self.getPQRMol1)
 
-        pdb_0_ent.grid(     sticky='we', row=0, column=0, padx=5, pady=1)
-        pdb_0_but.grid(     sticky='we', row=0, column=1, padx=5, pady=1)
-        label0.grid(        sticky='we', row=0, column=2, padx=5, pady=1)
-        pymol_obj0_opt.grid(sticky='we', row=0, column=3, padx=5, pady=1)
-        pdb_1_ent.grid(     sticky='we', row=1, column=0, padx=5, pady=1)
-        pdb_1_but.grid(     sticky='we', row=1, column=1, padx=5, pady=1)
-        label1.grid(        sticky='we', row=1, column=2, padx=5, pady=1)
-        pymol_obj1_opt.grid(sticky='we', row=1, column=3, padx=5, pady=1)
-        pqr_ff_opt.grid(    sticky='we', row=2, column=0, padx=5, pady=1)
-        pqr_an_but.grid(    sticky='we', row=3, column=0, padx=5, pady=1)
-        pqr_opt_but.grid(   sticky='we', row=4, column=0, padx=5, pady=1)
-        label2.grid(        sticky='we', row=5, column=0, padx=5, pady=1)
-        pqr_0_ent.grid(     sticky='we', row=6, column=0, padx=5, pady=1)
-        pqr_0_but.grid(     sticky='we', row=6, column=1, padx=5, pady=1)
-        pqr_1_ent.grid(     sticky='we', row=7, column=0, padx=5, pady=1)
-        pqr_1_but.grid(     sticky='we', row=7, column=1, padx=5, pady=1)
+        pdb_0_ent.grid(     sticky='we', row=0, column=0, **pref)
+        pdb_0_but.grid(     sticky='we', row=0, column=1, **pref)
+        label0.grid(        sticky='we', row=0, column=2, **pref)
+        pymol_obj0_opt.grid(sticky='we', row=0, column=3, **pref)
+        pdb_1_ent.grid(     sticky='we', row=1, column=0, **pref)
+        pdb_1_but.grid(     sticky='we', row=1, column=1, **pref)
+        label1.grid(        sticky='we', row=1, column=2, **pref)
+        pymol_obj1_opt.grid(sticky='we', row=1, column=3, **pref)
+        pqr_ff_opt.grid(    sticky='we', row=2, column=0, **pref)
+        pqr_an_but.grid(    sticky='we', row=3, column=0, **pref)
+        pqr_opt_but.grid(   sticky='we', row=4, column=0, **pref)
+        label2.grid(        sticky='we', row=5, column=0, **pref)
+        pqr_0_ent.grid(     sticky='we', row=6, column=0, **pref)
+        pqr_0_but.grid(     sticky='we', row=6, column=1, **pref)
+        pqr_1_ent.grid(     sticky='we', row=7, column=0, **pref)
+        pqr_1_but.grid(     sticky='we', row=7, column=1, **pref)
 
         ############
         # Tab: APBS
@@ -417,55 +418,55 @@ class BDPlugin(object):
         label0 = Tkinter.Label(group_grids, text='Molecule 0')
         dime0_0_ent = Pmw.EntryField(group_grids, labelpos='w',
                                      label_text='dime: ',
-                                     value=self.dime0[0].get(),
+                                     # value=self.dime0[0].get(),
                                      validate={'validator': 'integer', 'min': 0},
                                      entry_textvariable=self.dime0[0],
                                      entry_width=5)
         dime0_1_ent = Pmw.EntryField(group_grids, labelpos='w',
                                      label_text='',
-                                     value=self.dime0[1].get(),
+                                     # value=self.dime0[1].get(),
                                      validate={'validator': 'integer', 'min': 0},
-                                     # entry_textvariable=self.dime0[1],
+                                     entry_textvariable=self.dime0[1],
                                      entry_width=5)
         dime0_2_ent = Pmw.EntryField(group_grids, labelpos='w',
                                      label_text='',
-                                     value=self.dime0[2].get(),
+                                     # value=self.dime0[2].get(),
                                      validate={'validator': 'integer', 'min': 0},
-                                     # entry_textvariable=self.dime0[2],
+                                     entry_textvariable=self.dime0[2],
                                      entry_width=5)
         cglen0_0_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='cglen: ',
-                                      value='%5.3f' % self.cglen0[0].get(),
+                                      #value='%5.3f' % self.cglen0[0].get(),
                                       validate={'validator': 'real', 'min': 0.00},
-                                      # entry_textvariable=self.cglen0[0],
+                                      entry_textvariable=self.cglen0[0],
                                       entry_width=8)
         cglen0_1_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
-                                      value=self.cglen0[1].get(),
+                                      # value=self.cglen0[1].get(),
                                       validate={'validator': 'real', 'min': 0.00},
-                                      # entry_textvariable=self.cglen0[1],
+                                      entry_textvariable=self.cglen0[1],
                                       entry_width=8)
         cglen0_2_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
-                                      value=self.cglen0[2].get(),
+                                      # value= '%5.3f' % self.cglen0[2].get(),
                                       validate={'validator': 'real', 'min': 0.00},
-                                      # entry_textvariable=self.cglen0[2],
+                                      entry_textvariable=self.cglen0[2],
                                       entry_width=8)
         fglen0_0_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='fglen: ',
-                                      value=self.fglen0[0].get(),
+                                      # value=self.fglen0[0].get(),
                                       validate={'validator': 'real', 'min': 0.00},
                                       entry_textvariable=self.fglen0[0],
                                       entry_width=8)
         fglen0_1_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
-                                      value=self.fglen0[1].get(),
+                                      # value=self.fglen0[1].get(),
                                       validate={'validator': 'real', 'min': 0.00},
                                       entry_textvariable=self.fglen0[1],
                                       entry_width=8)
         fglen0_2_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
-                                      value=self.fglen0[2].get(),
+                                      # value=self.fglen0[2].get(),
                                       validate={'validator': 'real', 'min': 0.00},
                                       entry_textvariable=self.fglen0[2],
                                       entry_width=8)
@@ -476,56 +477,56 @@ class BDPlugin(object):
         label1 = Tkinter.Label(group_grids, text='Molecule 1')
         dime1_0_ent = Pmw.EntryField(group_grids, labelpos='w',
                                      label_text='dime: ',
-                                     value=self.dime1[0].get(),
+                                     # value=self.dime1[0].get(),
                                      validate={'validator': 'integer', 'min': 0},
                                      entry_textvariable=self.dime1[0],
                                      entry_width=5)
         dime1_1_ent = Pmw.EntryField(group_grids, labelpos='w',
                                      label_text='',
-                                     value=self.dime1[1].get(),
+                                     # value=self.dime1[1].get(),
                                      validate={'validator': 'integer', 'min': 0},
                                      entry_textvariable=self.dime1[1],
                                      entry_width=5)
         dime1_2_ent = Pmw.EntryField(group_grids, labelpos='w',
                                      label_text='',
-                                     value=self.dime1[2].get(),
+                                     # value=self.dime1[2].get(),
                                      validate={'validator': 'integer', 'min': 0},
                                      entry_textvariable=self.dime1[2],
                                      entry_width=5)
 
         cglen1_0_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='cglen: ',
-                                      value=self.cglen1[0].get(),
+                                      # value=self.cglen1[0].get(),
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.cglen1[0],
                                       entry_width=8)
         cglen1_1_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
-                                      value=self.cglen1[1].get(),
+                                      # value=self.cglen1[1].get(),
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.cglen1[1],
                                       entry_width=8)
         cglen1_2_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
-                                      value=self.cglen1[2].get(),
+                                      # value=self.cglen1[2].get(),
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.cglen1[2],
                                       entry_width=8)
         fglen1_0_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='fglen: ',
-                                      value=self.fglen1[0].get(),
+                                      # value=self.fglen1[0].get(),
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.fglen1[0],
                                       entry_width=8)
         fglen1_1_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
-                                      value=self.fglen1[1].get(),
+                                      # value=self.fglen1[1].get(),
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.fglen1[1],
                                       entry_width=8)
         fglen1_2_ent = Pmw.EntryField(group_grids, labelpos='w',
                                       label_text='',
-                                      value=self.fglen1[2].get(),
+                                      # value=self.fglen1[2].get(),
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.fglen1[2],
                                       entry_width=8)
@@ -534,30 +535,30 @@ class BDPlugin(object):
                                        text="Calculate grid size",
                                        command=self.getSizemol1)
 
-        label0.grid(sticky='we', row=0, column=0, padx=5, pady=10)
-        dime0_0_ent.grid(sticky='we', row=1, column=0, padx=5, pady=1)
-        dime0_1_ent.grid(sticky='we', row=1, column=1, padx=5, pady=1)
-        dime0_2_ent.grid(sticky='we', row=1, column=2, padx=5, pady=1)
-        cglen0_0_ent.grid(sticky='we', row=2, column=0, padx=5, pady=1)
-        cglen0_1_ent.grid(sticky='we', row=2, column=1, padx=5, pady=1)
-        cglen0_2_ent.grid(sticky='we', row=2, column=2, padx=5, pady=1)
-        fglen0_0_ent.grid(sticky='we', row=3, column=0, padx=5, pady=1)
-        fglen0_1_ent.grid(sticky='we', row=3, column=1, padx=5, pady=1)
-        fglen0_2_ent.grid(sticky='we', row=3, column=2, padx=5, pady=1)
-        get_size0_but.grid(sticky='we', row=4, column=2, padx=5, pady=1)
+        label0.grid(sticky='we', row=0, column=0, **pref)
+        dime0_0_ent.grid(sticky='we', row=1, column=0, **pref)
+        dime0_1_ent.grid(sticky='we', row=1, column=1, **pref)
+        dime0_2_ent.grid(sticky='we', row=1, column=2, **pref)
+        cglen0_0_ent.grid(sticky='we', row=2, column=0, **pref)
+        cglen0_1_ent.grid(sticky='we', row=2, column=1, **pref)
+        cglen0_2_ent.grid(sticky='we', row=2, column=2, **pref)
+        fglen0_0_ent.grid(sticky='we', row=3, column=0, **pref)
+        fglen0_1_ent.grid(sticky='we', row=3, column=1, **pref)
+        fglen0_2_ent.grid(sticky='we', row=3, column=2, **pref)
+        get_size0_but.grid(sticky='we', row=4, column=2, **pref)
 
-        label1.grid(sticky='we', row=5, column=0, padx=5, pady=10)
-        dime1_0_ent.grid(sticky='we', row=6, column=0, padx=5, pady=1)
-        dime1_1_ent.grid(sticky='we', row=6, column=1, padx=5, pady=1)
-        dime1_2_ent.grid(sticky='we', row=6, column=2, padx=5, pady=1)
-        cglen1_0_ent.grid(sticky='we', row=7, column=0, padx=5, pady=1)
-        cglen1_1_ent.grid(sticky='we', row=7, column=1, padx=5, pady=1)
-        cglen1_2_ent.grid(sticky='we', row=7, column=2, padx=5, pady=1)
-        fglen1_0_ent.grid(sticky='we', row=8, column=0, padx=5, pady=1)
-        fglen1_1_ent.grid(sticky='we', row=8, column=1, padx=5, pady=1)
-        fglen1_2_ent.grid(sticky='we', row=8, column=2, padx=5, pady=1)
+        label1.grid(sticky='we', row=5, column=0, **pref)
+        dime1_0_ent.grid(sticky='we', row=6, column=0, **pref)
+        dime1_1_ent.grid(sticky='we', row=6, column=1, **pref)
+        dime1_2_ent.grid(sticky='we', row=6, column=2, **pref)
+        cglen1_0_ent.grid(sticky='we', row=7, column=0, **pref)
+        cglen1_1_ent.grid(sticky='we', row=7, column=1, **pref)
+        cglen1_2_ent.grid(sticky='we', row=7, column=2, **pref)
+        fglen1_0_ent.grid(sticky='we', row=8, column=0, **pref)
+        fglen1_1_ent.grid(sticky='we', row=8, column=1, **pref)
+        fglen1_2_ent.grid(sticky='we', row=8, column=2, **pref)
 
-        get_size1_but.grid(sticky='we', row=9, column=2, padx=5, pady=1)
+        get_size1_but.grid(sticky='we', row=9, column=2, **pref)
 
         group_grids.columnconfigure(0, weight=9)
         group_grids.columnconfigure(1, weight=1)
@@ -569,71 +570,71 @@ class BDPlugin(object):
                                        items=['lpbe', 'npbe'])
         solvent_die_ent = Pmw.EntryField(group_apbs, labelpos='w',
                                          label_text='Solvent eps :',
-                                         value=self.solvent_dielectric.get(),
+                                         # value=self.solvent_dielectric.get(),
                                          validate={'validator': 'real', 'min': 0.0},
                                          entry_textvariable=self.solvent_dielectric,
                                          entry_width=10)
         solute_die_ent = Pmw.EntryField(group_apbs, labelpos='w',
                                         label_text='Molecule 0/1 eps: ',
-                                        value=self.interior_dielectric.get(),
+                                        # value=self.interior_dielectric.get(),
                                         validate={'validator': 'real', 'min': 0.0},
                                         entry_textvariable=self.interior_dielectric,
                                         entry_width=10)
         ion1_charge_ent = Pmw.EntryField(group_apbs, labelpos='w',
                                          label_text='Ion(1) charge: ',
-                                         value=self.ion_charge[0].get(),
+                                         # value=self.ion_charge[0].get(),
                                          validate={'validator': 'integer', 'min': -2},
                                          entry_textvariable=self.ion_charge[0],
                                          entry_width=5)
         ion1_conc_ent = Pmw.EntryField(group_apbs, labelpos='w',
                                        label_text='conc.: ',
-                                       value=self.ion_conc[0].get(),
+                                       # value=self.ion_conc[0].get(),
                                        validate={'validator': 'real', 'min': 0.0},
                                        entry_textvariable=self.ion_conc[0],
                                        entry_width=5)
         ion1_rad_ent = Pmw.EntryField(group_apbs, labelpos='w',
                                       label_text='radius: ',
-                                      value=self.ion_rad[0].get(),
+                                      # value=self.ion_rad[0].get(),
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.ion_rad[0],
                                       entry_width=5)
         ion2_charge_ent = Pmw.EntryField(group_apbs, labelpos='w',
                                          label_text='Ion(2) charge: ',
-                                         value=self.ion_charge[1].get(),
+                                         # value=self.ion_charge[1].get(),
                                          validate={'validator': 'integer', 'min': -2},
                                          entry_textvariable=self.ion_charge[1],
                                          entry_width=5)
         ion2_conc_ent = Pmw.EntryField(group_apbs, labelpos='w',
                                        label_text='conc.: ',
-                                       value=self.ion_conc[1].get(),
+                                       # value=self.ion_conc[1].get(),
                                        validate={'validator': 'real', 'min': 0.0},
                                        entry_textvariable=self.ion_conc[1],
                                        entry_width=5)
         ion2_rad_ent = Pmw.EntryField(group_apbs, labelpos='w',
                                       label_text='radius: ',
-                                      value=self.ion_rad[1].get(),
+                                      # value=self.ion_rad[1].get(),
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.ion_rad[1],
                                       entry_width=5)
 
         sdens_ent = Pmw.EntryField(group_apbs, labelpos='w',
                                    label_text='Surf. sphere density: ',
-                                   value=self.sdens.get(),
+                                   # value=self.sdens.get(),
                                    validate={'validator': 'real', 'min': 0.0},
                                    entry_textvariable=self.sdens, entry_width=5)
         srad_ent = Pmw.EntryField(group_apbs, labelpos='w',
                                   label_text='Solvent radius: ',
-                                  value=self.srad.get(),
+                                  # value=self.srad.get(),
                                   validate={'validator': 'real', 'min': 0.0},
                                   entry_textvariable=self.srad, entry_width=5)
         swin_ent = Pmw.EntryField(group_apbs, labelpos='w',
                                   label_text='Spline window: ',
-                                  value=self.swin.get(),
+                                  # value=self.swin.get(),
                                   validate={'validator': 'real', 'min': 0.0},
                                   entry_textvariable=self.swin, entry_width=5)
         temp_ent = Pmw.EntryField(group_apbs, labelpos='w',
                                   label_text='Temperature: ',
-                                  value=self.system_temp.get(),
+                                  # value=self.system_temp.get(),
                                   validate={'validator': 'real', 'min': 0.0},
                                   entry_textvariable=self.system_temp, entry_width=5)
         bcfl_ent = Pmw.OptionMenu(group_apbs, labelpos='w',
@@ -656,26 +657,26 @@ class BDPlugin(object):
                                       text="Run APBS to generate grids",
                                       command=self.runAPBS)
 
-        solvent_die_ent.grid(sticky='we', row=0, column=0, padx=5, pady=1)
-        solute_die_ent.grid( sticky='we', row=1, column=0, padx=5, pady=1)
-        sdens_ent.grid(      sticky='we', row=2, column=0, padx=5, pady=1)
-        srad_ent.grid(       sticky='we', row=3, column=0, padx=5, pady=1)
-        swin_ent.grid(       sticky='we', row=4, column=0, padx=5, pady=1)
-        temp_ent.grid(       sticky='we', row=5, column=0, padx=5, pady=1)
+        solvent_die_ent.grid(sticky='we', row=0, column=0, **pref)
+        solute_die_ent.grid( sticky='we', row=1, column=0, **pref)
+        sdens_ent.grid(      sticky='we', row=2, column=0, **pref)
+        srad_ent.grid(       sticky='we', row=3, column=0, **pref)
+        swin_ent.grid(       sticky='we', row=4, column=0, **pref)
+        temp_ent.grid(       sticky='we', row=5, column=0, **pref)
 
-        ion1_charge_ent.grid(sticky='we', row=6, column=0, padx=5, pady=1)
-        ion1_conc_ent.grid(  sticky='we', row=6, column=1, padx=5, pady=1)
-        ion1_rad_ent.grid(   sticky='we', row=6, column=2, padx=5, pady=1)
-        ion2_charge_ent.grid(sticky='we', row=7, column=0, padx=5, pady=1)
-        ion2_conc_ent.grid(  sticky='we', row=7, column=1, padx=5, pady=1)
-        ion2_rad_ent.grid(   sticky='we', row=7, column=2, padx=5, pady=1)
+        ion1_charge_ent.grid(sticky='we', row=6, column=0, **pref)
+        ion1_conc_ent.grid(  sticky='we', row=6, column=1, **pref)
+        ion1_rad_ent.grid(   sticky='we', row=6, column=2, **pref)
+        ion2_charge_ent.grid(sticky='we', row=7, column=0, **pref)
+        ion2_conc_ent.grid(  sticky='we', row=7, column=1, **pref)
+        ion2_rad_ent.grid(   sticky='we', row=7, column=2, **pref)
 
-        apbs_mode_ent.grid(sticky='we', row=0, column=1, columnspan=2, padx=5, pady=1)
-        bcfl_ent.grid(     sticky='we', row=1, column=1, columnspan=2, padx=5, pady=1)
-        chgm_ent.grid(     sticky='we', row=2, column=1, columnspan=2, padx=5, pady=1)
-        srfm_ent.grid(     sticky='we', row=3, column=1, columnspan=2, padx=5, pady=1)
+        apbs_mode_ent.grid(sticky='we', row=0, column=1, columnspan=2, **pref)
+        bcfl_ent.grid(     sticky='we', row=1, column=1, columnspan=2, **pref)
+        chgm_ent.grid(     sticky='we', row=2, column=1, columnspan=2, **pref)
+        srfm_ent.grid(     sticky='we', row=3, column=1, columnspan=2, **pref)
 
-        run_apbs_but.grid(sticky='we', row=8, column=0, columnspan=3, padx=5, pady=1)
+        run_apbs_but.grid(sticky='we', row=8, column=0, columnspan=3, **pref)
 
         ###############################
         # Tab: Reaction criteria setup
@@ -695,24 +696,24 @@ class BDPlugin(object):
                                                onvalue=True, offvalue=False)
         rxn_distance_ent = Pmw.EntryField(group_rxn, labelpos='wn',
                                           label_text='Reaction distance: ',
-                                          value=self.rxn_distance.get(),
+                                          # value=self.rxn_distance.get(),
                                           validate={'validator': 'real', 'min': 0.01},
                                           entry_textvariable=self.rxn_distance,
                                           entry_width=10)
         npairs_ent = Pmw.EntryField(group_rxn, labelpos='wn',
                                     label_text='Number of reaction pairs: ',
-                                    value=self.npairs.get(),
+                                    # value=self.npairs.get(),
                                     validate={'validator': 'integer', 'min': 1},
                                     entry_textvariable=self.npairs, entry_width=10)
         run_rxn_crit = Tkinter.Button(page, text="Creat rxn files",
                                       command=self.runRxnCrit)
 
-        contacts_ent.grid(    sticky='we', row=0, column=0, padx=5, pady=1)
-        contacts_but.grid(    sticky='e',  row=0, column=1, padx=5, pady=1)
-        def_contacts_but.grid(sticky='e',  row=0, column=2, padx=5, pady=1)
-        rxn_distance_ent.grid(sticky='we', row=1, column=0, padx=5, pady=1)
-        npairs_ent.grid(      sticky='we', row=2, column=0, padx=5, pady=1)
-        run_rxn_crit.grid(    sticky='we', row=3, column=0, padx=5, pady=1)
+        contacts_ent.grid(    sticky='we', row=0, column=0, **pref)
+        contacts_but.grid(    sticky='e',  row=0, column=1, **pref)
+        def_contacts_but.grid(sticky='e',  row=0, column=2, **pref)
+        rxn_distance_ent.grid(sticky='we', row=1, column=0, **pref)
+        npairs_ent.grid(      sticky='we', row=2, column=0, **pref)
+        run_rxn_crit.grid(    sticky='we', row=3, column=0, **pref)
         
         ######################
         # Tab: BD input files
@@ -723,89 +724,89 @@ class BDPlugin(object):
 
         solvent_eps_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                          label_text='Solvent eps: ',
-                                         value=self.solvent_eps.get(),
+                                         # value=self.solvent_eps.get(),
                                          validate={'validator': 'real', 'min': 0.0},
                                          entry_textvariable=self.solvent_eps)
         debyel_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                     label_text='Debye length: ',
-                                    value=self.debyel.get(),
+                                    # value=self.debyel.get(),
                                     validate={'validator': 'real', 'min': 0.0},
                                     entry_textvariable=self.debyel)
         mol0_eps_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                       label_text='Molecule 0 eps: ',
-                                      value=self.mol0_eps.get(),
+                                      # value=self.mol0_eps.get(),
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.mol0_eps)
         mol1_eps_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                       label_text='Molecule 1 eps: ',
-                                      value=self.mol1_eps.get(),
+                                      # value=self.mol1_eps.get(),
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.mol1_eps)
         ntraj_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                    label_text='Number of trajectories: ',
-                                   value=self.ntraj.get(),
+                                   # value=self.ntraj.get(),
                                    validate={'validator': 'integer', 'min': 1},
                                    entry_textvariable=self.ntraj)
         nthreads_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                       label_text='Number of threads: ',
-                                      value=self.nthreads.get(),
+                                      # value=self.nthreads.get(),
                                       validate={'validator': 'integer', 'min': 1},
                                       entry_textvariable=self.nthreads)
         mindx_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                    label_text='Time step tolerance: ',
-                                   value=self.mindx.get(),
+                                   # value=self.mindx.get(),
                                    validate={'validator': 'real', 'min': 0.01},
                                    entry_textvariable=self.mindx)
         ntrajo_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                     label_text='Number of trajectories per output: ',
-                                    value=self.ntrajo.get(),
+                                    # value=self.ntrajo.get(),
                                     validate={'validator': 'integer', 'min': 1},
                                     entry_textvariable=self.ntrajo)
         ncopies_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                      label_text='Number of copies: ',
-                                     value=self.ncopies.get(),
+                                     # value=self.ncopies.get(),
                                      validate={'validator': 'integer', 'min': 1},
                                      entry_textvariable=self.ncopies)
         nbincopies_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                         label_text='Number of bin copies: ',
-                                        value=self.nbincopies.get(),
+                                        # value=self.nbincopies.get(),
                                         validate={'validator': 'integer', 'min': 1},
                                         entry_textvariable=self.nbincopies)
         nsteps_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                     label_text='Number of steps: ',
-                                    value=self.nsteps.get(),
+                                    # value=self.nsteps.get(),
                                     validate={'validator': 'integer', 'min': 1},
                                     entry_textvariable=self.nsteps)
         westeps_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                      label_text='Number of WE steps per output: ',
-                                     value=self.westeps.get(),
+                                     # value=self.westeps.get(),
                                      validate={'validator': 'integer', 'min': 1},
                                      entry_textvariable=self.westeps)
         maxnsteps_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                        label_text='Max number of steps: ',
-                                       value=self.maxnsteps.get(),
+                                       # value=self.maxnsteps.get(),
                                        validate={'validator': 'integer', 'min': 1},
                                        entry_textvariable=self.maxnsteps)
 
         prep_bd_but = Tkinter.Button(page, text="Generate BD input file",
                                      command=self.prepBD)
 
-        solvent_eps_ent.grid(sticky='we', row=1, column=0, padx=5, pady=1)
-        debyel_ent.grid(     sticky='we', row=1, column=1, padx=5, pady=1)
-        mol0_eps_ent.grid(   sticky='we', row=2, column=0, padx=5, pady=1)
-        mol1_eps_ent.grid(   sticky='we', row=2, column=1, padx=5, pady=1)
+        solvent_eps_ent.grid(sticky='we', row=1, column=0, **pref)
+        debyel_ent.grid(     sticky='we', row=1, column=1, **pref)
+        mol0_eps_ent.grid(   sticky='we', row=2, column=0, **pref)
+        mol1_eps_ent.grid(   sticky='we', row=2, column=1, **pref)
 
-        ntraj_ent.grid(      sticky='we', row=3, column=0, padx=5, pady=1)
-        nthreads_ent.grid(   sticky='we', row=3, column=1, padx=5, pady=1)
-        mindx_ent.grid(      sticky='we', row=4, column=0, padx=5, pady=1)
-        ntrajo_ent.grid(     sticky='we', row=4, column=1, padx=5, pady=1)
-        ncopies_ent.grid(    sticky='we', row=5, column=0, padx=5, pady=1)
-        nbincopies_ent.grid( sticky='we', row=5, column=1, padx=5, pady=1)
-        nsteps_ent.grid(     sticky='we', row=6, column=0, padx=5, pady=1)
-        westeps_ent.grid(    sticky='we', row=6, column=1, padx=5, pady=1)
-        maxnsteps_ent.grid(  sticky='we', row=7, column=0, padx=5, pady=1)
+        ntraj_ent.grid(      sticky='we', row=3, column=0, **pref)
+        nthreads_ent.grid(   sticky='we', row=3, column=1, **pref)
+        mindx_ent.grid(      sticky='we', row=4, column=0, **pref)
+        ntrajo_ent.grid(     sticky='we', row=4, column=1, **pref)
+        ncopies_ent.grid(    sticky='we', row=5, column=0, **pref)
+        nbincopies_ent.grid( sticky='we', row=5, column=1, **pref)
+        nsteps_ent.grid(     sticky='we', row=6, column=0, **pref)
+        westeps_ent.grid(    sticky='we', row=6, column=1, **pref)
+        maxnsteps_ent.grid(  sticky='we', row=7, column=0, **pref)
 
-        prep_bd_but.grid(    sticky='we', row=8, column=0, padx=5, pady=1)
+        prep_bd_but.grid(    sticky='we', row=8, column=0, **pref)
 
         ######################
         # Tab: BD Simulation
@@ -845,13 +846,13 @@ class BDPlugin(object):
                                       text_foreground='white')
 
         bkgj_cb.grid(sticky='w', row=0, column=0, columnspan=2, padx=1, pady=1)
-        run_bd_but.grid(sticky='we', row=1, column=0, padx=5, pady=1)
-        kill_bd_but.grid(sticky='we', row=1, column=1, padx=5, pady=1)
+        run_bd_but.grid(sticky='we', row=1, column=0, **pref)
+        kill_bd_but.grid(sticky='we', row=1, column=1, **pref)
 
-        self.messagebar1.grid(sticky='we', row=2, column=0, columnspan=1, padx=5, pady=1)
-        self.messagebar2.grid(sticky='we', row=2, column=1, columnspan=1, padx=5, pady=1)
-        self.messagebar3.grid(sticky='we', row=3, column=0, columnspan=2, padx=5, pady=1)
-        self.logtxt_ent.grid(sticky='we', row=4, column=0, columnspan=2, padx=5, pady=1)
+        self.messagebar1.grid(sticky='we', row=2, column=0, columnspan=1, **pref)
+        self.messagebar2.grid(sticky='we', row=2, column=1, columnspan=1, **pref)
+        self.messagebar3.grid(sticky='we', row=3, column=0, columnspan=2, **pref)
+        self.logtxt_ent.grid(sticky='we', row=4, column=0, columnspan=2, **pref)
 
         ######################
         # Tab: Analysis
@@ -898,15 +899,15 @@ class BDPlugin(object):
         load_xyztraj_but = Tkinter.Button(group_analysis, text='Load xyz trajectory',
                                           command=self.loadTrajectoryFileXYZ)
 
-        load_traj_ent.grid(   sticky='we', row=0, column=0, padx=5, pady=1)
-        load_traj_but.grid(   sticky='e',  row=0, column=1, padx=5, pady=1)
-        analyze_but.grid(   sticky='e',  row=0, column=2, padx=5, pady=1)
-        self.message_ent.grid(sticky='we', row=1, column=0, columnspan=3, padx=5, pady=1)
-        select_index_but.grid(sticky='we',  row=2, column=0, padx=5, pady=1)
-        self.messagebar_idx.grid(sticky='we', row=2, column=1, padx=5, pady=1)
-        #traj_index_n_ent.grid(sticky='we',  row=3, column=0, padx=5, pady=1)
-        convert_but.grid(sticky='we', row=4, column=0, padx=5, pady=1)
-        load_xyztraj_but.grid(sticky='we', row=5, column=0, padx=5, pady=1)
+        load_traj_ent.grid(   sticky='we', row=0, column=0, **pref)
+        load_traj_but.grid(   sticky='e',  row=0, column=1, **pref)
+        analyze_but.grid(   sticky='e',  row=0, column=2, **pref)
+        self.message_ent.grid(sticky='we', row=1, column=0, columnspan=3, **pref)
+        select_index_but.grid(sticky='we',  row=2, column=0, **pref)
+        self.messagebar_idx.grid(sticky='we', row=2, column=1, **pref)
+        #traj_index_n_ent.grid(sticky='we',  row=3, column=0, **pref)
+        convert_but.grid(sticky='we', row=4, column=0, **pref)
+        load_xyztraj_but.grid(sticky='we', row=5, column=0, **pref)
         
         #############
         # Tab: About
@@ -930,7 +931,7 @@ class BDPlugin(object):
             'http://nbcr.ucsd.edu/')
 
         label_about = Tkinter.Label(group_about, text=about_plugin)
-        label_about.grid(sticky='we', row=0, column=2, padx=5, pady=10)
+        label_about.grid(sticky='we', row=0, column=2, **pref)
 
         self.notebook.setnaturalsize()
         return
