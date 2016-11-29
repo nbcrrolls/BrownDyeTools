@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-29 13:18:52
+# Last modified: 2016-11-29 13:28:57
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -1205,11 +1205,11 @@ quit
             dx_filename = i
             fout = '%s.in' % i
             with open(fout, "w") as f:
-                f.write((apbs_template % 
+                f.write((apbs_template %
                          (pqr_filename,
                           grid_points[0], grid_points[1], grid_points[2],
                           cglen[0], cglen[1], cglen[2],
-                          fglen[0], fglen[1], fglen[2], 
+                          fglen[0], fglen[1], fglen[2],
                           self.apbs_mode.get(), self.bcfl.get(),
                           self.ion_charge[0].get(),
                           self.ion_conc[0].get(), self.ion_rad[0].get(),
@@ -1269,7 +1269,7 @@ quit
             return
         self.debyel[0].set(float(dl[0][-1]))
         return
-    
+
     def runPqr2xml(self):
         """Run pqr2xml on mol0 and mol1 PQR files. """
         pqr2xml_exe = '%s/pqr2xml' % self.bd_path.get()
@@ -1615,7 +1615,7 @@ quit
         bdtop_input = 'input.xml'
         BDTOP_EXE = 'bd_top'
         with open(bdtop_input, "w") as f:
-            f.write((nam_simulation_template % 
+            f.write((nam_simulation_template %
                      (self.solvent_eps.get(), self.debyel[0].get(),
                       self.ntraj.get(), self.nthreads.get(),
                       MOL0, MOL0, MOL0, self.mol_eps[0].get(),
