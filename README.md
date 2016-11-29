@@ -7,33 +7,35 @@ dynamics simulation using the BrownDye collection of applications.
 
 ## Requirements
 
-* PDB2PQR () Download and install the precompiled binary version of PDB2PQR.
+* [PDB2PQR](http://www.poissonboltzmann.org) Download and install the
+  precompiled binary version of PDB2PQR.
 
-* APBS () Download and install the precompiled binary version of APBS.
+* [APBS](http://www.poissonboltzmann.org) Download and install the
+  precompiled binary version of APBS.
 
-* BrownDye (http://browndye.ucsd.edu) There is no precompiled binary
+* [BrownDye](http://browndye.ucsd.edu) There is no precompiled binary
   distribution, you have to download and compile the source code.
 
 Currently only Linux OS is supported. MacOS is untested.
 
 ## Installation
 
-* Download and install pymol. http://sourceforge.net/projects/pymol/
+* Download and install [pymol](http://sourceforge.net/projects/pymol/)
 
-* Download BrownDyeTools. https://github.com/rokdev/BrownDyeTools
+* Download [BrownDyeTools](https://github.com/rokdev/BrownDyeTools)
 
-* Open PyMol and install BrownDyeTools: Plugin -> Manage Plugins -> Install -> (locate BrownDyeTools.py file).
+* Open `PyMol` and install `BrownDyeTools`: `Plugin -> Manage Plugins -> Install -> (locate BrownDyeTools.py file)`.
 
 ## Using
 
-* Start pymol and open BrownDyeTools plugin: Plugin -> BrownDye Tools
+* Start `pymol` and open BrownDyeTools plugin: `Plugin -> BrownDye Tools`
 
 ### Configuration Tab
 
 * Create a randomly named project diretory or browse for a custom
   directory.
 
-* Set PDB2PQR_PATH, APBS_PATH and BD_PATH locations.
+* Set `PDB2PQR_PATH`, `APBS_PATH` and `BD_PATH` locations.
 
 ### PQR files Tab
 
@@ -90,6 +92,7 @@ Currently only Linux OS is supported. MacOS is untested.
   xyz trajectory") and visualize it in Pymol ("Load xyz trajectory").
 
 
+****
 
 ## License
 
