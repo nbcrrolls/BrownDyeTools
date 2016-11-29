@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-29 13:28:57
+# Last modified: 2016-11-29 13:56:16
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -40,7 +40,7 @@ import Pmw
 from threading import Thread
 from lxml import etree
 
-DEBUG = 5
+DEBUG = 0
 
 __version__ = '0.1.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
