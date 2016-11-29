@@ -3,7 +3,7 @@
 #
 # Last modified: 2016-11-28 14:20:06
 #
-'''BrownDye plugin for Pymol
+'''BrownDye Tools plugin for Pymol
 
 For documentation see: https://github.com/rokdev/BrownDyeTools
 
@@ -144,6 +144,8 @@ class BDPlugin(object):
     """ The main BrowDye plugin class."""
     def __init__(self, app):
         self.parent = app.root
+        Tkinter.Grid.rowconfigure(self.parent, 0, weight=1)
+        Tkinter.Grid.columnconfigure(self.parent, 0, weight=1)
         self.createGUI()
         
     def createGUI(self):
@@ -165,8 +167,8 @@ class BDPlugin(object):
         # parameters used by pdb2pqr
         self.mol0 = Tkinter.StringVar()
         self.mol1 = Tkinter.StringVar()
-        self.mol0.set(None) # '%s.pdb' % MOL0)
-        self.mol1.set(None) # '%s.pdb' % MOL1)
+        self.mol0.set(None)
+        self.mol1.set(None)
         self.pqr0 = Tkinter.StringVar()
         self.pqr1 = Tkinter.StringVar()
         self.pqr0.set(None)
@@ -406,6 +408,8 @@ class BDPlugin(object):
         pqr_0_but.grid(     sticky='we', row=6, column=1, **pref)
         pqr_1_ent.grid(     sticky='we', row=7, column=0, **pref)
         pqr_1_but.grid(     sticky='we', row=7, column=1, **pref)
+        page.columnconfigure(0, weight=1)
+        page.columnconfigure(1, weight=1)
 
         ############
         # Tab: APBS
@@ -415,8 +419,8 @@ class BDPlugin(object):
         group_apbs = Tkinter.LabelFrame(page, text='APBS options')
         group_grids.grid(sticky='eswn', row=0, column=0, columnspan=3, **pref)
         group_apbs.grid(sticky='eswn', row=0, column=3, columnspan=2, **pref)
-        page.columnconfigure(0, weight=2)
-        page.columnconfigure(1, weight=1)
+        #page.columnconfigure(0, weight=2)
+        #page.columnconfigure(1, weight=1)
 
         label0 = Tkinter.Label(group_grids, text='Molecule 0')
         dime0_0_ent = Pmw.EntryField(group_grids, labelpos='w',
@@ -546,8 +550,8 @@ class BDPlugin(object):
 
         get_size1_but.grid(sticky='we', row=9, column=2, **pref)
 
-        group_grids.columnconfigure(0, weight=9)
-        group_grids.columnconfigure(1, weight=1)
+        #group_grids.columnconfigure(0, weight=9)
+        #group_grids.columnconfigure(1, weight=1)
         
         apbs_mode_ent = Pmw.OptionMenu(group_apbs, labelpos='w',
                                        label_text='APBS mode: ',
@@ -651,6 +655,8 @@ class BDPlugin(object):
         srfm_ent.grid(     sticky='we', row=3, column=1, columnspan=2, **pref)
 
         run_apbs_but.grid(sticky='we', row=8, column=0, columnspan=3, **pref)
+        page.columnconfigure(0, weight=1)
+        page.columnconfigure(1, weight=1)
 
         ###############################
         # Tab: Reaction criteria setup
@@ -687,74 +693,76 @@ class BDPlugin(object):
         def_contacts_but.grid(sticky='e',  row=0, column=2, **pref)
         rxn_distance_ent.grid(sticky='we', row=1, column=0, **pref)
         npairs_ent.grid(      sticky='we', row=2, column=0, **pref)
-        run_rxn_crit.grid(    sticky='we', row=3, column=0, **pref)
+        run_rxn_crit.grid(    sticky='w', row=3, column=0, **pref)
+        group_rxn.columnconfigure(0, weight=1)
+        page.columnconfigure(0, weight=1)
         
         ######################
         # Tab: BD input files
         ######################
         page = self.notebook.add('BD setup')
-        group_bdinput = Tkinter.LabelFrame(page, text='BD input file')
+        group_bdinput = Tkinter.LabelFrame(page, text='BrownDye input file')
         group_bdinput.grid(sticky='eswn', row=0, column=0, columnspan=2, **pref)
 
         solvent_eps_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                          label_text='Solvent eps: ',
                                          validate={'validator': 'real', 'min': 0.0},
-                                         entry_textvariable=self.solvent_eps)
+                                         entry_textvariable=self.solvent_eps, entry_width=5)
         debyel_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                     label_text='Debye length: ',
                                     validate={'validator': 'real', 'min': 0.0},
-                                    entry_textvariable=self.debyel)
+                                    entry_textvariable=self.debyel, entry_width=5)
         mol0_eps_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                       label_text='Molecule 0 eps: ',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.mol0_eps)
+                                      entry_textvariable=self.mol0_eps, entry_width=5)
         mol1_eps_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                       label_text='Molecule 1 eps: ',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.mol1_eps)
+                                      entry_textvariable=self.mol1_eps, entry_width=5)
         ntraj_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                    label_text='Number of trajectories: ',
                                    validate={'validator': 'integer', 'min': 1},
-                                   entry_textvariable=self.ntraj)
+                                   entry_textvariable=self.ntraj, entry_width=5)
         nthreads_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                       label_text='Number of threads: ',
                                       validate={'validator': 'integer', 'min': 1},
-                                      entry_textvariable=self.nthreads)
+                                      entry_textvariable=self.nthreads, entry_width=5)
         mindx_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                    label_text='Time step tolerance: ',
                                    validate={'validator': 'real', 'min': 0.01},
-                                   entry_textvariable=self.mindx)
+                                   entry_textvariable=self.mindx, entry_width=5)
         ntrajo_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                     label_text='Number of trajectories per output: ',
                                     validate={'validator': 'integer', 'min': 1},
-                                    entry_textvariable=self.ntrajo)
+                                    entry_textvariable=self.ntrajo, entry_width=5)
         ncopies_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                      label_text='Number of copies: ',
                                      validate={'validator': 'integer', 'min': 1},
-                                     entry_textvariable=self.ncopies)
+                                     entry_textvariable=self.ncopies, entry_width=5)
         nbincopies_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                         label_text='Number of bin copies: ',
                                         validate={'validator': 'integer', 'min': 1},
-                                        entry_textvariable=self.nbincopies)
+                                        entry_textvariable=self.nbincopies, entry_width=5)
         nsteps_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                     label_text='Number of steps: ',
                                     validate={'validator': 'integer', 'min': 1},
-                                    entry_textvariable=self.nsteps)
+                                    entry_textvariable=self.nsteps, entry_width=5)
         westeps_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                      label_text='Number of WE steps per output: ',
                                      validate={'validator': 'integer', 'min': 1},
-                                     entry_textvariable=self.westeps)
+                                     entry_textvariable=self.westeps, entry_width=5)
         maxnsteps_ent = Pmw.EntryField(group_bdinput, labelpos='wn',
                                        label_text='Max number of steps: ',
                                        validate={'validator': 'integer', 'min': 1},
-                                       entry_textvariable=self.maxnsteps)
+                                       entry_textvariable=self.maxnsteps, entry_width=5)
 
         prep_bd_but = Tkinter.Button(page, text="Generate BrownDye input files",
                                      command=self.prepBD)
 
-        self.status_bar = Pmw.MessageBar(page, entry_width=10, entry_relief='sunken',
+        self.status_bar = Pmw.MessageBar(page, entry_width=20, entry_relief='sunken',
                                          labelpos='w', label_text='Status:')
-        self.status_bar.message('state', ' Idle ...')
+        self.status_bar.message('state', '')
 
         solvent_eps_ent.grid(sticky='we', row=1, column=0, **pref)
         debyel_ent.grid(     sticky='we', row=1, column=1, **pref)
@@ -771,8 +779,11 @@ class BDPlugin(object):
         westeps_ent.grid(    sticky='we', row=6, column=1, **pref)
         maxnsteps_ent.grid(  sticky='we', row=7, column=0, **pref)
 
-        prep_bd_but.grid(    sticky='we', row=8, column=0, **pref)
-        self.status_bar.grid(    sticky='we', row=9, column=0, **pref)
+        prep_bd_but.grid(    sticky='w', row=8, column=0, **pref)
+        self.status_bar.grid(sticky='w', row=9, column=0, **pref)
+        group_bdinput.columnconfigure(0, weight=1)
+        group_bdinput.columnconfigure(1, weight=1)
+        page.columnconfigure(0, weight=1)
 
         ######################
         # Tab: BD Simulation
@@ -786,30 +797,30 @@ class BDPlugin(object):
                                       variable=self.run_in_background,
                                       onvalue=True, offvalue=False)
         run_bd_but = Tkinter.Button(group_sim,
-                                    text="Start BD simulation", command=self.runBD)
+                                    text="Start BrownDye simulation", command=self.runBD)
         kill_bd_but = Tkinter.Button(group_sim,
                                      text="Stop background job", command=self.killBD)
         self.msgbar1 = Pmw.MessageBar(group_sim,
-                                          entry_width=10, entry_relief='sunken',
-                                          labelpos='w',
-                                          label_text='Trajectories: ')
+                                      entry_width=10, entry_relief='sunken',
+                                      labelpos='w',
+                                      label_text='Trajectories: ')
         self.msgbar2 = Pmw.MessageBar(group_sim,
-                                          entry_width=20, entry_relief='sunken',
-                                          labelpos='w',
-                                          label_text='Completed / escaped / stuck events: ')
+                                      entry_width=10, entry_relief='sunken',
+                                      labelpos='w',
+                                      label_text='Completed / escaped / stuck events: ')
         self.msgbar3 = Pmw.MessageBar(group_sim,
-                                      entry_width=20, entry_relief='sunken',
+                                      entry_width=10, entry_relief='sunken',
                                       labelpos='w',
                                       label_text=('Calculated reaction rate '
                                                   'and probability: '))
         self.logtxt_ent = Pmw.ScrolledText(group_sim, labelpos='wn',
-                                      borderframe=5, 
-                                      vscrollmode='dynamic',
-                                      hscrollmode='dynamic',
-                                      text_width=100, text_height=15,
-                                      text_wrap='none',
-                                      text_background='#000000',
-                                      text_foreground='white')
+                                           borderframe=5,
+                                           vscrollmode='dynamic',
+                                           hscrollmode='dynamic',
+                                           text_width=100, text_height=15,
+                                           text_wrap='none',
+                                           text_background='#000000',
+                                           text_foreground='white')
 
         bkgj_cb.grid(sticky='w', row=0, column=0, columnspan=2, **pref)
         run_bd_but.grid(sticky='we', row=1, column=0, **pref)
@@ -819,31 +830,35 @@ class BDPlugin(object):
         self.msgbar2.grid(sticky='we', row=2, column=1, columnspan=1, **pref)
         self.msgbar3.grid(sticky='we', row=3, column=0, columnspan=2, **pref)
         self.logtxt_ent.grid(sticky='we', row=4, column=0, columnspan=2, **pref)
+        group_sim.columnconfigure(0, weight=1)
+        group_sim.columnconfigure(1, weight=1)
+
+        page.columnconfigure(0, weight=1)
 
         ######################
         # Tab: Analysis
         ######################
         page = self.notebook.add('Analysis')
         group_analysis = Tkinter.LabelFrame(page, text='Analysis and Visualization')
-        group_analysis.grid(sticky='eswn', row=0, column=0, columnspan=2, **pref)
+        group_analysis.grid(sticky='eswn', row=0, column=0, **pref)
 
         load_traj_ent = Pmw.EntryField(group_analysis,
                                        label_text='Select trajectory file: ',
                                        labelpos='w',
                                        entry_textvariable=self.traj_f,
-                                       entry_width=30)
+                                       entry_width=20)
         load_traj_but = Tkinter.Button(group_analysis, text='Browse...',
                                        command=self.loadTrajectoryFile)
         analyze_but = Tkinter.Button(group_analysis, text='Analyze',
                                        command=self.analyzeTrajectoryFile)
         self.msg_ent = Pmw.ScrolledText(group_analysis, labelpos='wn',
-                                            borderframe=5, 
-                                            vscrollmode='dynamic',
-                                            hscrollmode='dynamic',
-                                            text_width=80, text_height=10,
-                                            text_wrap='word',
-                                            text_background='#000000',
-                                            text_foreground='white')
+                                        borderframe=5,
+                                        vscrollmode='dynamic',
+                                        hscrollmode='dynamic',
+                                        text_width=80, text_height=10,
+                                        text_wrap='word',
+                                        text_background='#000000',
+                                        text_foreground='white')
         self.index_list = [None]
         self.dialog_idx = Pmw.SelectionDialog(page,
                                               title='Trajectory index',
@@ -857,23 +872,25 @@ class BDPlugin(object):
         select_index_but = Tkinter.Button(group_analysis, text='Select trajectory index',
                                           command=self.dialog_idx.activate)
         self.msgbar_idx = Pmw.MessageBar(group_analysis,
-                                             entry_width=20, entry_relief='sunken',
-                                             labelpos='w',
-                                             label_text='Selected trajectory index: ')
+                                         entry_width=20, entry_relief='sunken',
+                                         labelpos='w',
+                                         label_text='Selected trajectory: ')
         convert_but = Tkinter.Button(group_analysis, text='Convert to xyz trajectory',
                                      command=self.convertTrajectoryToXYZ)
         load_xyztraj_but = Tkinter.Button(group_analysis, text='Load xyz trajectory',
                                           command=self.loadTrajectoryFileXYZ)
 
-        load_traj_ent.grid(   sticky='we', row=0, column=0, **pref)
-        load_traj_but.grid(   sticky='e',  row=0, column=1, **pref)
-        analyze_but.grid(   sticky='e',  row=0, column=2, **pref)
+        load_traj_ent.grid(sticky='we', row=0, column=0, **pref)
+        load_traj_but.grid(sticky='w',  row=0, column=1, **pref)
+        analyze_but.grid(sticky='w',  row=0, column=2, **pref)
         self.msg_ent.grid(sticky='we', row=1, column=0, columnspan=3, **pref)
         select_index_but.grid(sticky='we',  row=2, column=0, **pref)
         self.msgbar_idx.grid(sticky='we', row=2, column=1, **pref)
         #traj_index_n_ent.grid(sticky='we',  row=3, column=0, **pref)
         convert_but.grid(sticky='we', row=4, column=0, **pref)
         load_xyztraj_but.grid(sticky='we', row=5, column=0, **pref)
+        group_analysis.columnconfigure(0, weight=1)
+        page.columnconfigure(0, weight=1)
         
         #############
         # Tab: About
@@ -1134,7 +1151,7 @@ class BDPlugin(object):
 
     def runAPBS(self):
         """Run APBS calculations on molecule 0 and molecule 1"""
-        apbs_template = """# APBS template for BD grids
+        apbs_template = """# APBS template for BrownDye grids
 read
     mol pqr %s
 end
@@ -1605,13 +1622,13 @@ quit
             p = subprocess.Popen(" nohup %s" % command, shell=True)
             global JOBPID
             JOBPID = p.pid
-            self.notebook.selectpage('BD Simulation')
+            self.notebook.selectpage('BD simulation')
             self.logtxt_ent.insert('end', "::: Starting BrownDye simulation in background.\n")
             self.logtxt_ent.insert('end', "::: Job PID: %d \n" % JOBPID)
         else:
             thread = RunThread(self, command)
             thread.start()
-            self.notebook.selectpage('BD Simulation')
+            self.notebook.selectpage('BD simulation')
             self.logtxt_ent.insert('end', "::: Starting BrownDye simulation ...\n")
             time.sleep(1)
             tm = MonitorThread(self, thread, 3600, LOGFILE)
@@ -1619,7 +1636,7 @@ quit
         return
 
     def killBD(self):
-        """Terminate background BD job, if exists."""
+        """Terminate background BrownDye job, if exists."""
         try:
             command = 'pkill -9 -P %d' % JOBPID
             s = subprocess.Popen(command, shell=True,
@@ -1762,7 +1779,7 @@ quit
         return is_exe
         
     def exitBDPlugin(self, result):
-        """Quid BD plugin."""
+        """Quit BrownDye plugin."""
         if tkMessageBox.askokcancel("Really quit?",
                                     "Do you want to exit BrownDye Plugin now?") == 0:
             return 0
@@ -1836,7 +1853,7 @@ class RunThread(Thread):
 
 
 class MonitorThread(Thread):
-    """Monitor runing BD job and print out progress information."""
+    """Monitor runing BrownDye job and print out progress information."""
     def __init__(self, my_inst, mythread, timeout, logfile):
         Thread.__init__(self)
         self.logfile = logfile.replace("\\","/")
