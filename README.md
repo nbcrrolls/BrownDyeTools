@@ -5,6 +5,8 @@
 This Pymol plugin allows setting up, running and analyzing Brownian
 dynamics simulation using the BrownDye collection of applications.
 
+![main window](https://github.com/rokdev/BrownDyeTools/blob/master/main.png)
+
 ## Requirements
 
 * [PDB2PQR](http://www.poissonboltzmann.org) Download and install the
@@ -24,7 +26,8 @@ Currently only Linux OS is supported. MacOS is untested.
 
 * Download [BrownDyeTools](https://github.com/rokdev/BrownDyeTools)
 
-* Open `PyMol` and install `BrownDyeTools`: `Plugin -> Manage Plugins -> Install -> (locate BrownDyeTools.py file)`.
+* Open `PyMol` and install `BrownDyeTools`: `Plugin -> Manage Plugins -> Install` then 
+  locate `BrownDyeTools.py` file.
 
 ## Using
 
@@ -32,48 +35,48 @@ Currently only Linux OS is supported. MacOS is untested.
 
 ### Configuration Tab
 
-* Create a randomly named project diretory or browse for a custom
+* Create a randomly named project directory or browse for a custom
   directory.
 
-* Set `PDB2PQR_PATH`, `APBS_PATH` and `BD_PATH` locations.
+* Set `PDB2PQR_PATH`, `APBS_PATH` and `BD_PATH` locations. If you have these set as environment variables in your shell they will be picked up by the plugin.
 
 ### PQR files Tab
 
 * Pick molecule 0 and 1 PDB files, or use Pymol selection.
 
-* Press "Create PQR files" to create PQR files from the PDB files
-  using pre-set force field.
+* Press "Create PQR files" to create PQR files from the PDB files using pre-set force field.
 
 * Or load your own PQR files.
 
 ### APBS Tab
 
-* Press "Calculate grid size' for both molecule 0 and 1 to get
+* Press `Calculate grid size` for both molecule 0 and 1 to get
   automatic grid dimensions or fill in your customized grid size
   values.
 
-* Adjust APBS options if necessary and press "Run APBS to generate
-  grids" to launch two APBS calculation (for molecule 0 and 1). This
+* Adjust APBS options if necessary and press `Run APBS to generate
+  grids` to launch two APBS calculation (for molecule 0 and 1). This
   might take a couple of minutes, depending on the molecule size and
   your computing hardware.
 
 ### Reaction criteria Tab
 
-* You can use either the default protein-protein contact file to load
+* You can use either the default protein-protein contact file or load
   your own.
 
-* Adjust the reaction criteria if necessary and press "Create
-  reaction files" to generate the necessary reaction input files.
+* Adjust the reaction criteria if desired and press `Create
+  reaction files` to generate the necessary reaction input files.
   
 
 ### BD setup Tab
 
 * Adjust - if necessary - BrownDye input file parameters. For detailed
-  description of the input parameters see BrownDye documentation.
+  description of the input parameters see BrownDye documentation. 
+  `Get Debye length` will automatically fetch the APBS calculated value.
 
-* Press "Generate BD input files" to create the necessary BrownDye
+* Press `Generate BD input files` to create the necessary BrownDye
   input files. This might take a couple of minutes, depending on the
-  molecule size.
+  size of molecules 0 and 1.
 
 ### BD simulation Tab
 
@@ -85,11 +88,11 @@ Currently only Linux OS is supported. MacOS is untested.
 ### Analysis Tab
 
 * After simulation is finished you can pick and analyze the created
-  trajectory files. The "Analyze" button will print how many
+  trajectory files. The `Analyze` button will print how many
   successful events were recorder in the particular trajectory files
   and their index numbers. You can then pick one successful trajectory
-  ("Select trajectory file") and convert it to XYZ file ("Convert to
-  xyz trajectory") and visualize it in Pymol ("Load xyz trajectory").
+  (`Select trajectory file`) and convert it to XYZ file (`Convert to
+  xyz trajectory`) and visualize it in Pymol (`Load xyz trajectory`).
 
 
 ****
@@ -99,4 +102,4 @@ Currently only Linux OS is supported. MacOS is untested.
 This software is released under the terms of GNU GPL3 license.
 For more details please see the accompanying documentation.
 
-(c) 2016 National Biomedical Computation Resource <http://nbcr.ucsd.edu>
+(c) 2016 [National Biomedical Computation Resource](http://nbcr.ucsd.edu)
