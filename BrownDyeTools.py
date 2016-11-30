@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-30 13:45:11
+# Last modified: 2016-11-30 14:04:45
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -881,12 +881,12 @@ class BDPlugin(object):
                                           command=self.loadTrajectoryFileXYZ)
 
         load_traj_ent.grid(sticky='we', row=0, column=0, **pref)
-        load_traj_but.grid(sticky='w',  row=0, column=1, **pref)
-        analyze_but.grid(sticky='w',  row=0, column=2, **pref)
+        load_traj_but.grid(sticky='w', row=0, column=1, **pref)
+        analyze_but.grid(sticky='w', row=0, column=2, **pref)
         self.msg_ent.grid(sticky='we', row=1, column=0, columnspan=3, **pref)
-        select_index_but.grid(sticky='we',  row=2, column=0, **pref)
+        select_index_but.grid(sticky='we', row=2, column=0, **pref)
         self.msgbar_idx.grid(sticky='we', row=2, column=1, **pref)
-        #traj_index_n_ent.grid(sticky='we',  row=3, column=0, **pref)
+        #traj_index_n_ent.grid(sticky='we', row=3, column=0, **pref)
         convert_but.grid(sticky='we', row=4, column=0, **pref)
         load_xyztraj_but.grid(sticky='we', row=5, column=0, **pref)
         grp_analysis.columnconfigure(0, weight=1)
@@ -1625,8 +1625,12 @@ quit
                       self.ncopies.get(), self.nbincopies.get(),
                       self.nsteps.get(), self.westeps.get(),
                       self.maxnsteps.get())))
-
-        # FIXME check for .dx files
+        for i in [MOL0, MOL1]:
+            dxfile = '%s.dx' % i
+            if not os.path.isfile(dxfile):
+                print("::: %s DX file does not exist!" % dxfile)
+                print("::: Run APBS first to create it.")
+                return
         command = ('PATH=%s:${PATH} %s %s'
                    % (self.bd_path.get(), BDTOP_EXE, bdtop_input))
         if DEBUG > 2: print(command)
