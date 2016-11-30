@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-29 13:56:16
+# Last modified: 2016-11-30 13:45:11
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -40,7 +40,7 @@ import Pmw
 from threading import Thread
 from lxml import etree
 
-DEBUG = 0
+DEBUG = 5
 
 __version__ = '0.1.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
@@ -133,7 +133,7 @@ class DummyPymol(object):
     cmd = Cmd()
 
 try:
-    import pymol
+    import pymold
 except ImportError:
     print("::: Pymol import failed - Pymol features not available!")
     pymol = DummyPymol()
