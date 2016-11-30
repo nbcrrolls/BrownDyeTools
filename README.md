@@ -3,7 +3,8 @@
 [BrownDye](http://browndye.ucsd.edu) plugin for [Pymol](http://ww.pymol.org)
 
 This Pymol plugin allows setting up, running and analyzing Brownian
-dynamics simulation using the BrownDye collection of applications.
+dynamics simulation using the BrownDye collection of applications. This plugin 
+can also be used as a standalone GUI, without Pymol.
 
 ![main window](https://github.com/rokdev/BrownDyeTools/blob/master/main.png)
 
