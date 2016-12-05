@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-11-29 13:56:16
+# Last modified: 2016-12-05 13:49:39
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -9,24 +9,16 @@ For documentation see: https://github.com/rokdev/BrownDyeTools
 
 Author : Robert Konecny <rok@ucsd.edu>
 Release date: November 2016
-License: GNU General Public License v.3
+License: GNU General Public License version 3
 
 Copyright 2016 Robert Konecny, NBCR
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or (at
-your option) any later version.
-
-This program is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+This is free software, licensed under the GNU General Public License
+version 3. You should have received a copy of the GNU General Public
+License along with this program.
+If not, see <http://www.gnu.org/licenses/>.
 '''
+
 from __future__ import print_function
 import os, subprocess
 import sys, string, filecmp, shutil, re
@@ -40,7 +32,7 @@ import Pmw
 from threading import Thread
 from lxml import etree
 
-DEBUG = 0
+DEBUG = 5
 
 __version__ = '0.1.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
@@ -133,7 +125,7 @@ class DummyPymol(object):
     cmd = Cmd()
 
 try:
-    import pymol
+    import pymold
 except ImportError:
     print("::: Pymol import failed - Pymol features not available!")
     pymol = DummyPymol()
@@ -184,6 +176,10 @@ class BDPlugin(object):
         self.pqr_ff.set(pqr_defaults['force_field'])
 
         # APBS parameters and defaults
+        self.gspace = Tkinter.DoubleVar()
+        self.gspace.set(psize_defaults['space'])
+        self.fadd = Tkinter.DoubleVar()
+        self.fadd.set(psize_defaults['fadd'])
         self.dime0 = [Tkinter.IntVar() for _ in range(3)]
         [self.dime0[x].set(0) for x in range(3)]
         self.cglen0 = [Tkinter.DoubleVar() for _ in range(3)]
@@ -419,6 +415,17 @@ class BDPlugin(object):
         #page.columnconfigure(0, weight=2)
         #page.columnconfigure(1, weight=1)
 
+
+        gspace_ent = Pmw.EntryField(grp_grids, labelpos='w',
+                                    label_text='Grid spacing (A): ',
+                                    validate={'validator': 'real', 'min': 0.00},
+                                    entry_textvariable=self.gspace,
+                                    entry_width=4)
+        fadd_ent = Pmw.EntryField(grp_grids, labelpos='w',
+                                  label_text='Grid span beyond the molecule (in A) : ',
+                                  validate={'validator': 'real', 'min': 0.00},
+                                  entry_textvariable=self.fadd,
+                                  entry_width=4)
         label0 = Tkinter.Label(grp_grids, text='Molecule 0')
         dime0_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                      label_text='dime: ',
@@ -522,30 +529,32 @@ class BDPlugin(object):
                                        text="Calculate grid size",
                                        command=self.getSizemol1)
 
-        label0.grid(sticky='we', row=0, column=0, **pref)
-        dime0_0_ent.grid(sticky='we', row=1, column=0, **pref)
-        dime0_1_ent.grid(sticky='we', row=1, column=1, **pref)
-        dime0_2_ent.grid(sticky='we', row=1, column=2, **pref)
-        cglen0_0_ent.grid(sticky='we', row=2, column=0, **pref)
-        cglen0_1_ent.grid(sticky='we', row=2, column=1, **pref)
-        cglen0_2_ent.grid(sticky='we', row=2, column=2, **pref)
-        fglen0_0_ent.grid(sticky='we', row=3, column=0, **pref)
-        fglen0_1_ent.grid(sticky='we', row=3, column=1, **pref)
-        fglen0_2_ent.grid(sticky='we', row=3, column=2, **pref)
-        get_size0_but.grid(sticky='we', row=4, column=2, **pref)
+        gspace_ent.grid(sticky='we', row=0, column=0, **pref)
+        fadd_ent.grid(sticky='we', row=0, column=1, columnspan=2, **pref)
+        label0.grid(sticky='we', row=1, column=0, **pref)
+        dime0_0_ent.grid(sticky='we', row=2, column=0, **pref)
+        dime0_1_ent.grid(sticky='we', row=2, column=1, **pref)
+        dime0_2_ent.grid(sticky='we', row=2, column=2, **pref)
+        cglen0_0_ent.grid(sticky='we', row=3, column=0, **pref)
+        cglen0_1_ent.grid(sticky='we', row=3, column=1, **pref)
+        cglen0_2_ent.grid(sticky='we', row=3, column=2, **pref)
+        fglen0_0_ent.grid(sticky='we', row=4, column=0, **pref)
+        fglen0_1_ent.grid(sticky='we', row=4, column=1, **pref)
+        fglen0_2_ent.grid(sticky='we', row=4, column=2, **pref)
+        get_size0_but.grid(sticky='we', row=5, column=2, **pref)
 
-        label1.grid(sticky='we', row=5, column=0, **pref)
-        dime1_0_ent.grid(sticky='we', row=6, column=0, **pref)
-        dime1_1_ent.grid(sticky='we', row=6, column=1, **pref)
-        dime1_2_ent.grid(sticky='we', row=6, column=2, **pref)
-        cglen1_0_ent.grid(sticky='we', row=7, column=0, **pref)
-        cglen1_1_ent.grid(sticky='we', row=7, column=1, **pref)
-        cglen1_2_ent.grid(sticky='we', row=7, column=2, **pref)
-        fglen1_0_ent.grid(sticky='we', row=8, column=0, **pref)
-        fglen1_1_ent.grid(sticky='we', row=8, column=1, **pref)
-        fglen1_2_ent.grid(sticky='we', row=8, column=2, **pref)
+        label1.grid(sticky='we', row=6, column=0, **pref)
+        dime1_0_ent.grid(sticky='we', row=7, column=0, **pref)
+        dime1_1_ent.grid(sticky='we', row=7, column=1, **pref)
+        dime1_2_ent.grid(sticky='we', row=7, column=2, **pref)
+        cglen1_0_ent.grid(sticky='we', row=8, column=0, **pref)
+        cglen1_1_ent.grid(sticky='we', row=8, column=1, **pref)
+        cglen1_2_ent.grid(sticky='we', row=8, column=2, **pref)
+        fglen1_0_ent.grid(sticky='we', row=9, column=0, **pref)
+        fglen1_1_ent.grid(sticky='we', row=9, column=1, **pref)
+        fglen1_2_ent.grid(sticky='we', row=9, column=2, **pref)
 
-        get_size1_but.grid(sticky='we', row=9, column=2, **pref)
+        get_size1_but.grid(sticky='we', row=10, column=2, **pref)
 
         #grp_grids.columnconfigure(0, weight=9)
         #grp_grids.columnconfigure(1, weight=1)
@@ -881,12 +890,12 @@ class BDPlugin(object):
                                           command=self.loadTrajectoryFileXYZ)
 
         load_traj_ent.grid(sticky='we', row=0, column=0, **pref)
-        load_traj_but.grid(sticky='w',  row=0, column=1, **pref)
-        analyze_but.grid(sticky='w',  row=0, column=2, **pref)
+        load_traj_but.grid(sticky='w', row=0, column=1, **pref)
+        analyze_but.grid(sticky='w', row=0, column=2, **pref)
         self.msg_ent.grid(sticky='we', row=1, column=0, columnspan=3, **pref)
-        select_index_but.grid(sticky='we',  row=2, column=0, **pref)
+        select_index_but.grid(sticky='we', row=2, column=0, **pref)
         self.msgbar_idx.grid(sticky='we', row=2, column=1, **pref)
-        #traj_index_n_ent.grid(sticky='we',  row=3, column=0, **pref)
+        #traj_index_n_ent.grid(sticky='we', row=3, column=0, **pref)
         convert_but.grid(sticky='we', row=4, column=0, **pref)
         load_xyztraj_but.grid(sticky='we', row=5, column=0, **pref)
         grp_analysis.columnconfigure(0, weight=1)
@@ -1069,7 +1078,7 @@ class BDPlugin(object):
         if not os.path.isfile(pqr_fname):
             print("::: %s does not exist!" % pqr_fname)
             return
-        psize = Psize()
+        psize = Psize(self)
         psize.runPsize(pqr_fname)
         #print(psize.getCharge())
         grid_points = psize.getFineGridPoints()
@@ -1086,7 +1095,7 @@ class BDPlugin(object):
         if not os.path.isfile(pqr_fname):
             print("::: %s does not exist!" % pqr_fname)
             return
-        psize = Psize()
+        psize = Psize(self)
         psize.runPsize(pqr_fname)
         #print(psize.getCharge())
         grid_points = psize.getFineGridPoints()
@@ -1625,8 +1634,12 @@ quit
                       self.ncopies.get(), self.nbincopies.get(),
                       self.nsteps.get(), self.westeps.get(),
                       self.maxnsteps.get())))
-
-        # FIXME check for .dx files
+        for i in [MOL0, MOL1]:
+            dxfile = '%s.dx' % i
+            if not os.path.isfile(dxfile):
+                print("::: %s DX file does not exist!" % dxfile)
+                print("::: Run APBS first to create it.")
+                return
         command = ('PATH=%s:${PATH} %s %s'
                    % (self.bd_path.get(), BDTOP_EXE, bdtop_input))
         if DEBUG > 2: print(command)
@@ -1946,7 +1959,7 @@ class StopThread(Thread):
         os.system('kill -9 %d' % self.pid)
         return
 
-class Psize:
+class Psize(object):
     """Calculate grid size dimensions for a pqr molecule.
     
     This is based on pdb2pqr version of psize. All licensing info applies.
@@ -1958,14 +1971,14 @@ class Psize:
 
     This significantly increases the grid size and thus memory requirements, however.
     """
-    def __init__(self):
+    def __init__(self, bd_instance):
         self.constants = {"GMEMFAC": 200, "GMEMCEIL": 400, "OFAC": 0.1,
                           "REDFAC": 0.25, "TFAC_ALPHA": 9e-5,
                           "TFAC_XEON": 3e-4, "TFAC_SPARC": 5e-4}
 
         self.constants['CFAC'] = psize_defaults['cfac']
-        self.constants['FADD'] = psize_defaults['fadd']
-        self.constants['SPACE'] = psize_defaults['space']
+        self.constants['FADD'] = bd_instance.fadd.get()
+        self.constants['SPACE'] = bd_instance.gspace.get()
         self.minlen = [360.0, 360.0, 360.0]
         self.maxlen = [0.0, 0.0, 0.0]
         self.q = 0.0
