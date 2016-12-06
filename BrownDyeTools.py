@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-05 13:49:39
+# Last modified: 2016-12-06 12:35:00
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -31,6 +31,7 @@ import Tkinter
 import Pmw
 from threading import Thread
 from lxml import etree
+import importlib
 
 DEBUG = 5
 
@@ -49,6 +50,7 @@ PDB2PQR_EXE = 'pdb2pqr'
 pqr_defaults = {
     'force_field': 'parse',
     'options': '--apbs-input',
+    'pH': 7.0,
 }
 
 psize_defaults = {
@@ -125,11 +127,10 @@ class DummyPymol(object):
     cmd = Cmd()
 
 try:
-    import pymold
+    import pymol
 except ImportError:
     print("::: Pymol import failed - Pymol features not available!")
     pymol = DummyPymol()
-
 
 class BDPlugin(object):
     """ The main BrowDye plugin class."""
@@ -172,6 +173,10 @@ class BDPlugin(object):
         self.pdb2pqr_opt.set(pqr_defaults['options'])
         self.pqr_assign_only = Tkinter.BooleanVar()
         self.pqr_assign_only.set(True)
+        self.use_propka = Tkinter.BooleanVar()
+        self.use_propka.set(False)
+        self.ph = Tkinter.DoubleVar()
+        self.ph.set(pqr_defaults['pH'])
         self.pqr_ff = Tkinter.StringVar()
         self.pqr_ff.set(pqr_defaults['force_field'])
 
@@ -365,12 +370,21 @@ class BDPlugin(object):
                                     label_text='Force field: ',
                                     menubutton_textvariable=self.pqr_ff,
                                     menubutton_width=7,
-                                    items=['parse', 'charmm', 'amber'])
+                                    items=['parse', 'charmm', 'amber', 'swanson'])
         pqr_an_but = Tkinter.Checkbutton(grp_pqr,
                                          text=('Assign charge and radius only '
                                                '(no structure optimization)'),
                                          variable=self.pqr_assign_only,
                                          onvalue=True, offvalue=False)
+        propka_but = Tkinter.Checkbutton(grp_pqr,
+                                         text=('Use PROPKA to assign protonation states'),
+                                         variable=self.use_propka,
+                                         onvalue=True, offvalue=False)
+        ph_ent = Pmw.EntryField(grp_pqr, labelpos='w',
+                                label_text='pH: ',
+                                validate={'validator': 'real', 'min': 0.00},
+                                entry_textvariable=self.ph,
+                                entry_width=4)
         pqr_opt_but = Tkinter.Button(page, text='Create PQR files',
                                      command=self.pdb2pqr)
         label2 = Tkinter.Label(page, text='or load your PQR files:')
@@ -395,6 +409,8 @@ class BDPlugin(object):
         pymol_obj1_opt.grid(sticky='we', row=1, column=3, **pref)
         pqr_ff_opt.grid(    sticky='we', row=2, column=0, **pref)
         pqr_an_but.grid(    sticky='we', row=3, column=0, **pref)
+        propka_but.grid(    sticky='we', row=3, column=1, columnspan=2, **pref)
+        ph_ent.grid(        sticky='we', row=3, column=3, **pref)
         pqr_opt_but.grid(   sticky='we', row=4, column=0, **pref)
         label2.grid(        sticky='we', row=5, column=0, **pref)
         pqr_0_ent.grid(     sticky='we', row=6, column=0, **pref)
@@ -473,9 +489,8 @@ class BDPlugin(object):
                                       entry_textvariable=self.fglen0[2],
                                       entry_width=8)
         get_size0_but = Tkinter.Button(grp_grids,
-                                       text="Calculate grid size",
+                                       text="Set grid",
                                        command=self.getSizemol0)
-
         label1 = Tkinter.Label(grp_grids, text='Molecule 1')
         dime1_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                      label_text='dime: ',
@@ -1146,8 +1161,17 @@ class BDPlugin(object):
 
         assign_only = ''
         if self.pqr_assign_only.get(): assign_only = '--assign-only'
-        pqr_options = ('%s %s --ff=%s' %
-                       (assign_only, self.pdb2pqr_opt.get(), self.pqr_ff.get()))
+        if self.use_propka.get():
+            use_propka = '--ph-calc-method=propka --with-ph=%s --drop-water' % self.ph.get()
+            assign_only = ''
+            self.pqr_ff.set('parse')
+            print("::: Using PROPKA to assign protonation states and "
+                  "optimizing the structure.\n"
+                  "The force field is set to PARSE.")
+
+        pqr_options = ('%s %s %s --ff=%s' %
+                       (assign_only, use_propka, self.pdb2pqr_opt.get(),
+                        self.pqr_ff.get()))
         pdb2pqr_exe = ('%s/%s' % (self.pdb2pqr_path.get(), PDB2PQR_EXE))
         if not self.check_exe(pdb2pqr_exe): return
         for i in [MOL0, MOL1]:
