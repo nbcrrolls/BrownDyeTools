@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-06 12:35:00
+# Last modified: 2016-12-07 09:52:55
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -33,7 +33,7 @@ from threading import Thread
 from lxml import etree
 import importlib
 
-DEBUG = 5
+DEBUG = 0
 
 __version__ = '0.1.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
@@ -90,6 +90,7 @@ bd_defaults = {
     'maxnsteps': 10000,
     'rxn_distance': 5.0,
     'npairs': 3,
+    'nsteps_per_output': 1000,
 }
 
 if DEBUG > 0:
@@ -262,6 +263,8 @@ class BDPlugin(object):
         self.westeps.set(bd_defaults['westeps'])
         self.maxnsteps = Tkinter.IntVar()
         self.maxnsteps.set(bd_defaults['maxnsteps'])
+        self.nsteps_per_output = Tkinter.IntVar()
+        self.nsteps_per_output.set(bd_defaults['nsteps_per_output'])
 
         self.run_in_background = Tkinter.BooleanVar()
         self.run_in_background.set(False)
@@ -779,7 +782,11 @@ class BDPlugin(object):
                                        label_text='Max number of steps: ',
                                        validate={'validator': 'integer', 'min': 1},
                                        entry_textvariable=self.maxnsteps, entry_width=5)
-
+        nsteps_per_output_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
+                                               label_text='Number of steps per output: ',
+                                               validate={'validator': 'integer', 'min': 1},
+                                               entry_textvariable=self.nsteps_per_output,
+                                               entry_width=5)
         prep_bd_but = Tkinter.Button(page, text="Generate BrownDye input files",
                                      command=self.prepBD)
 
@@ -802,7 +809,7 @@ class BDPlugin(object):
         nsteps_ent.grid(     sticky='we', row=7, column=0, **pref)
         westeps_ent.grid(    sticky='we', row=7, column=1, **pref)
         maxnsteps_ent.grid(  sticky='we', row=8, column=0, **pref)
-
+        nsteps_per_output_ent.grid(  sticky='we', row=8, column=1, **pref)
         prep_bd_but.grid(    sticky='e', row=9, column=0, **pref)
         self.status_bar.grid(sticky='e', row=10, column=0, **pref)
         grp_bdinput.columnconfigure(0, weight=1)
@@ -1642,11 +1649,14 @@ quit
   <n-we-steps-per-output> %d </n-we-steps-per-output>
   <max-n-steps> %d </max-n-steps>
   <trajectory-file> traj </trajectory-file>
-  <n-steps-per-output> 10000 </n-steps-per-output>
+  <n-steps-per-output> %d </n-steps-per-output>
 </root>
 """
         bdtop_input = 'input.xml'
         BDTOP_EXE = 'bd_top'
+        if self.debyel[0].get() == 0.0:
+            print("::: Invalid Debye length!")
+            return
         with open(bdtop_input, "w") as f:
             f.write((nam_simulation_template %
                      (self.solvent_eps.get(), self.debyel[0].get(),
@@ -1657,7 +1667,8 @@ quit
                       self.ntrajo.get(),
                       self.ncopies.get(), self.nbincopies.get(),
                       self.nsteps.get(), self.westeps.get(),
-                      self.maxnsteps.get())))
+                      self.maxnsteps.get(),
+                      self.nsteps_per_output.get())))
         for i in [MOL0, MOL1]:
             dxfile = '%s.dx' % i
             if not os.path.isfile(dxfile):
@@ -1774,10 +1785,12 @@ quit
         for i in traj_index:
             with open(self.traj_f.get(), 'r') as f:
                 d = etree.parse(f)
-                xpath_str = 'trajectory[n-traj=" %d "]//s/n' % i
+                # xpath_str = 'trajectory[n-traj=" %d "]//s/n' % i
+                xpath_str = 'trajectory[n-traj=" %d "]//s' % i
                 j = d.xpath(xpath_str)
                 logline = ('trajectory %d: %s frames\n' 
-                           % (i, j[0].text.strip()))
+                           % (i, len(j) * 20))
+                # % (i, j[0].text.strip()))
                 self.msg_ent.insert('end', "%s" % logline)
                 self.dialog_idx.insert('end', i)
         return
@@ -1847,9 +1860,9 @@ quit
         
     def exitBDPlugin(self, result):
         """Quit BrownDye plugin."""
-        if tkMessageBox.askokcancel("Really quit?",
-                                    "Exit BrownDye Plugin now?") == 0:
-            return 0
+        #if tkMessageBox.askokcancel("Really quit?",
+        #                            "Exit BrownDye Plugin now?") == 0:
+        #    return 0
         print("Exiting BrownDye Plugin ...")
         if __name__ == '__main__':
             self.parent.destroy()
