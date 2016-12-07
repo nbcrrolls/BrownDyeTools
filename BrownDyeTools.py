@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-07 09:52:55
+# Last modified: 2016-12-07 14:21:35
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -32,15 +32,17 @@ import Pmw
 from threading import Thread
 from lxml import etree
 import importlib
+import json
 
-DEBUG = 0
+DEBUG = 5
 
-__version__ = '0.1.0'
+__version__ = '0.2.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
 
 PDB2PQR_PATH = None
 APBS_PATH = None
 BD_PATH = None
+CONFIG_FILE = 'bd-config.json'
 DEFAULT_CONTACTS_FILE = 'protein-protein-contacts-default.xml'
 MOL0 = 'mol0'
 MOL1 = 'mol1'
@@ -127,8 +129,11 @@ class DummyPymol(object):
                 return 'object:map'
     cmd = Cmd()
 
+real_pymol = 'pymol'
+if DEBUG > 1: real_pymol = 'pymold'
 try:
-    import pymol
+    # import pymol
+    pymol = __import__(real_pymol)
 except ImportError:
     print("::: Pymol import failed - Pymol features not available!")
     pymol = DummyPymol()
@@ -156,7 +161,9 @@ class BDPlugin(object):
         self.apbs_path.set(APBS_PATH)
         self.bd_path = Tkinter.StringVar()
         self.bd_path.set(BD_PATH)
-
+        self.config_file = Tkinter.StringVar()
+        self.config_file.set(CONFIG_FILE)
+        
         # parameters used by pdb2pqr
         self.mol0 = Tkinter.StringVar()
         self.mol1 = Tkinter.StringVar()
@@ -325,7 +332,18 @@ class BDPlugin(object):
                                      entry_textvariable=self.bd_path)
         bd_path_but = Tkinter.Button(config, text='Browse...',
                                      command=self.getBDpath)
-
+        label1 = Tkinter.Label(config, text='')
+        config_ent = Pmw.EntryField(config,
+                                    label_text='Save or load calculation configuration: ',
+                                    labelpos='wn',
+                                    entry_textvariable=self.config_file)
+        config_but = Tkinter.Button(config, text='Browse...',
+                                    command=self.getConfigPath)
+        load_config_but = Tkinter.Button(config, text='Load configuration',
+                                         command=self.loadConfig)
+        save_config_but = Tkinter.Button(config, text='Save configuration',
+                                         command=self.saveConfig)
+        
         # arrange widgets using grid
         project_path_ent.grid(sticky='we', row=1, column=0, **pref)
         project_path_but.grid(sticky='we', row=1, column=1, **pref)
@@ -337,6 +355,11 @@ class BDPlugin(object):
         apbs_path_but.grid(   sticky='we', row=3, column=1, **pref)
         bd_path_ent.grid(     sticky='we', row=4, column=0, **pref)
         bd_path_but.grid(     sticky='we', row=4, column=1, **pref)
+        label1.grid(          sticky='we', row=5, column=2, **pref)
+        config_ent.grid(      sticky='we', row=6, column=0, **pref)
+        config_but.grid(      sticky='we', row=6, column=1, **pref)
+        load_config_but.grid( sticky='e', row=6, column=2, **pref)
+        save_config_but.grid( sticky='w', row=6, column=3, **pref)
         config.columnconfigure(0, weight=8)
         config.columnconfigure(1, weight=2)
 
@@ -1020,6 +1043,90 @@ class BDPlugin(object):
         self.bd_path.set(d)
         return
 
+    def getConfigPath(self):
+        f = tkFileDialog.askopenfilename(title='Configuration file',
+                                         initialdir='',
+                                         parent=self.parent)
+        self.config_file.set(f)
+        return
+    
+    def loadConfig(self):
+        configf = self.config_file.get()
+        with open(configf) as f:    
+            data = json.load(f)
+
+        self.pdb2pqr_opt.set(data["pqr"]["opt"])
+        self.use_propka.set(data["pqr"]["propka"])
+        self.ph.set(data["pqr"]["pH"])
+        self.pqr_ff.set(data["pqr"]["FF"])
+
+        self.gspace.set(data["psize"]["gspace"])
+        self.fadd.set(data["psize"]["fadd"])
+                        
+        self.interior_dielectric.set(data["apbs"]["sdie"])
+        self.solvent_dielectric.set(data["apbs"]["pdie"])
+        
+        self.pdb2pqr_path.set(data['paths']['PDB2PQR_PATH'])
+        self.apbs_path.set(data['paths']['APBS_PATH'])
+        self.bd_path.set(data['paths']['BD_PATH'])
+        self.projectDir.set(data['paths']['ProjectDir'])    
+
+        self.ntraj.set(data["bd"]["ntraj"])
+        self.nthreads.set(data["bd"]["nthreads"])
+        self.mindx.set(data["bd"]["mindx"])
+        self.ntrajo.set(data["bd"]["ntrajo"])
+        self.ncopies.set(data["bd"]["ncopies"])
+        self.nbincopies.set(data["bd"]["nbincopies"])
+        self.nsteps.set(data["bd"]["nsteps"])
+        self.westeps.set(data["bd"]["westeps"])
+        self.maxnsteps.set(data["bd"]["maxnsteps"])
+        self.nsteps_per_output.set(data["bd"]["nsteps_per_output"])
+
+        return
+
+    def saveConfig(self):
+        configf = self.config_file.get()
+        data = {}
+        data['paths'] = {"PDB2PQR_PATH": self.pdb2pqr_path.get(),
+                         "APBS_PATH": self.apbs_path.get(),
+                         "BD_PATH": self.bd_path.get(),
+                         "ProjectDir": self.projectDir.get()}
+        pqr_config = {
+            "opt": self.pdb2pqr_opt.get(),
+            "propka": self.use_propka.get(),
+            "pH": self.ph.get(),
+            "FF": self.pqr_ff.get(),
+        }
+        psize_config = {
+            "gspace": self.gspace.get(),
+            "fadd": self.fadd.get(),
+        }
+        apbs_config = {
+            "sdie": self.interior_dielectric.get(),
+            "pdie": self.solvent_dielectric.get(),
+        }
+        bd_config = {
+            "ntraj": self.ntraj.get(),
+            "nthreads": self.nthreads.get(),
+            "mindx": self.mindx.get(),
+            "ntrajo": self.ntrajo.get(),
+            "ncopies": self.ncopies.get(),
+            "nbincopies": self.nbincopies.get(),
+            "nsteps": self.nsteps.get(),
+            "westeps": self.westeps.get(),
+            "maxnsteps": self.maxnsteps.get(),
+            "nsteps_per_output": self.nsteps_per_output.get(),
+        }
+
+        data['pqr'] = pqr_config
+        data['psize'] = psize_config
+        data['apbs'] = apbs_config
+        data['bd'] = bd_config
+        
+        with open(configf, 'w') as f:
+            json.dump(data, f)
+        return
+
     def getPDBMol(self, n):
         """Get molecule 0/1 PDB filename."""
         fname = tkFileDialog.askopenfilename(title='PDB File',
@@ -1290,7 +1397,7 @@ quit
             if DEBUG > 2: print("Parsing %s for Debye length ..." % fname)
             if not os.path.isfile(fname):
                 print("::: File %s does not exist!" % fname )
-                print("::: Run APBS first.")
+                print("::: You need to run APBS first.")
                 return
             with open(fname) as f:
                 for line in f:
@@ -2002,7 +2109,6 @@ class Psize(object):
     This is based on pdb2pqr version of psize. All licensing info applies.
 
     Note: CFAC and FADD defaults changed to accomodate BrownDye requirements.
-    
     CFAC 1.7 -> 3.0
     FADD 20 -> 50
 
