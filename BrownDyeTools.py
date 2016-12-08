@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-07 14:21:35
+# Last modified: 2016-12-08 12:46:03
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -23,7 +23,7 @@ from __future__ import print_function
 import os, subprocess
 import sys, string, filecmp, shutil, re
 import random
-import time
+import time, datetime
 #import tkSimpleDialog
 import tkMessageBox
 import tkFileDialog
@@ -34,7 +34,7 @@ from lxml import etree
 import importlib
 import json
 
-DEBUG = 5
+DEBUG = 4
 
 __version__ = '0.2.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
@@ -51,7 +51,7 @@ PDB2PQR_EXE = 'pdb2pqr'
 
 pqr_defaults = {
     'force_field': 'parse',
-    'options': '--apbs-input',
+    'options': '--apbs-input --chain',
     'pH': 7.0,
 }
 
@@ -92,7 +92,7 @@ bd_defaults = {
     'maxnsteps': 10000,
     'rxn_distance': 5.0,
     'npairs': 3,
-    'nsteps_per_output': 1000,
+    'nsteps_per_output': 2,
 }
 
 if DEBUG > 0:
@@ -107,7 +107,7 @@ if "BD_PATH" in os.environ: BD_PATH = os.environ["BD_PATH"]
 JOBPID = None
 
 def __init__(self):
-    """BrownDye plugin for PyMol."""
+    """BrownDyeTools plugin for PyMol."""
     self.menuBar.addmenuitem('Plugin', 'command',
                              'BrownDye Tools', label='BrownDye Tools',
                              command=lambda s=self: BDPlugin(s))
@@ -130,7 +130,7 @@ class DummyPymol(object):
     cmd = Cmd()
 
 real_pymol = 'pymol'
-if DEBUG > 1: real_pymol = 'pymold'
+if DEBUG > 4: real_pymol = 'pymold'
 try:
     # import pymol
     pymol = __import__(real_pymol)
@@ -149,7 +149,7 @@ class BDPlugin(object):
     def createGUI(self):
         """The main GUI class - sets up all GUI elements."""
         self.dialog = Pmw.Dialog(self.parent, buttons=('Exit',),
-                                 title='BrownDye Plugin for PyMOL',
+                                 title='BrownDyeTools Plugin for PyMOL',
                                  command=self.exitBDPlugin)
         Pmw.setbusycursorattributes(self.dialog.component('hull'))
 
@@ -288,8 +288,9 @@ class BDPlugin(object):
         w = Tkinter.Label(self.dialog.interior(),
                           text=('\nBrownDye Tools for PyMOL\n'
                                 'Version %s, NBCR 2016\n\n'
-                                'Plugin for setting up and running BrownDye '
-                                'Brownian dynamics simulations.' % __version__),
+                                'Plugin for setting up and running '
+                                'Brownian dynamics simulations with BrownDye.'
+                                % __version__),
                           background='black', foreground='white')
         w.pack(expand=1, fill='both', **pref)
 
@@ -401,11 +402,13 @@ class BDPlugin(object):
                                          text=('Assign charge and radius only '
                                                '(no structure optimization)'),
                                          variable=self.pqr_assign_only,
-                                         onvalue=True, offvalue=False)
+                                         onvalue=True, offvalue=False,
+                                         command=lambda: propka_but.toggle())
         propka_but = Tkinter.Checkbutton(grp_pqr,
                                          text=('Use PROPKA to assign protonation states'),
                                          variable=self.use_propka,
-                                         onvalue=True, offvalue=False)
+                                         onvalue=True, offvalue=False,
+                                         command=lambda: pqr_an_but.toggle())
         ph_ent = Pmw.EntryField(grp_pqr, labelpos='w',
                                 label_text='pH: ',
                                 validate={'validator': 'real', 'min': 0.00},
@@ -567,7 +570,7 @@ class BDPlugin(object):
                                       entry_width=8)
 
         get_size1_but = Tkinter.Button(grp_grids,
-                                       text="Calculate grid size",
+                                       text="Set grid",
                                        command=self.getSizemol1)
 
         gspace_ent.grid(sticky='we', row=0, column=0, **pref)
@@ -950,7 +953,7 @@ class BDPlugin(object):
         # Tab: About
         #############
         page = self.notebook.add('About')
-        grp_about = Tkinter.LabelFrame(page, text='About BrownDye Plugin for PyMOL')
+        grp_about = Tkinter.LabelFrame(page, text='About BrownDyeTools Plugin for PyMOL')
         # grp_about.grid(sticky='n', row=0, column=0, columnspan=2, **pref)
         grp_about.pack(fill='both', expand=True, **pref)
         about_plugin = (
@@ -1044,6 +1047,7 @@ class BDPlugin(object):
         return
 
     def getConfigPath(self):
+        """Ask for path to the configuration json file."""
         f = tkFileDialog.askopenfilename(title='Configuration file',
                                          initialdir='',
                                          parent=self.parent)
@@ -1051,14 +1055,17 @@ class BDPlugin(object):
         return
     
     def loadConfig(self):
+        """Load configuration from a file, update all affected variables."""
         configf = self.config_file.get()
         with open(configf) as f:    
             data = json.load(f)
 
-        self.pdb2pqr_opt.set(data["pqr"]["opt"])
-        self.use_propka.set(data["pqr"]["propka"])
-        self.ph.set(data["pqr"]["pH"])
-        self.pqr_ff.set(data["pqr"]["FF"])
+        pqr_config = data["pdb2pqr"]
+        self.pdb2pqr_opt.set(pqr_config["opt"])
+        self.use_propka.set(pqr_config["use propka"])
+        self.pqr_assign_only.set(pqr_config["assign only"])
+        self.ph.set(pqr_config["pH"])
+        self.pqr_ff.set(pqr_config["force field"])
 
         self.gspace.set(data["psize"]["gspace"])
         self.fadd.set(data["psize"]["fadd"])
@@ -1071,31 +1078,38 @@ class BDPlugin(object):
         self.bd_path.set(data['paths']['BD_PATH'])
         self.projectDir.set(data['paths']['ProjectDir'])    
 
-        self.ntraj.set(data["bd"]["ntraj"])
-        self.nthreads.set(data["bd"]["nthreads"])
-        self.mindx.set(data["bd"]["mindx"])
-        self.ntrajo.set(data["bd"]["ntrajo"])
-        self.ncopies.set(data["bd"]["ncopies"])
-        self.nbincopies.set(data["bd"]["nbincopies"])
-        self.nsteps.set(data["bd"]["nsteps"])
-        self.westeps.set(data["bd"]["westeps"])
-        self.maxnsteps.set(data["bd"]["maxnsteps"])
-        self.nsteps_per_output.set(data["bd"]["nsteps_per_output"])
+        bd_config = data["browndye"]
+        self.contacts_f.set(bd_config["contacts file"])
+        self.default_contacts_f.set(bd_config["use default contacts file"])
+        self.ntraj.set(bd_config["ntraj"])
+        self.nthreads.set(bd_config["nthreads"])
+        self.mindx.set(bd_config["mindx"])
+        self.ntrajo.set(bd_config["ntrajo"])
+        self.ncopies.set(bd_config["ncopies"])
+        self.nbincopies.set(bd_config["nbincopies"])
+        self.nsteps.set(bd_config["nsteps"])
+        self.westeps.set(bd_config["westeps"])
+        self.maxnsteps.set(bd_config["maxnsteps"])
+        self.nsteps_per_output.set(bd_config["nsteps_per_output"])
 
         return
 
     def saveConfig(self):
+        """Save configuration information to a json file."""
         configf = self.config_file.get()
         data = {}
-        data['paths'] = {"PDB2PQR_PATH": self.pdb2pqr_path.get(),
-                         "APBS_PATH": self.apbs_path.get(),
-                         "BD_PATH": self.bd_path.get(),
-                         "ProjectDir": self.projectDir.get()}
+        paths_config = {
+            "PDB2PQR_PATH": self.pdb2pqr_path.get(),
+            "APBS_PATH": self.apbs_path.get(),
+            "BD_PATH": self.bd_path.get(),
+            "ProjectDir": self.projectDir.get()
+        }
         pqr_config = {
             "opt": self.pdb2pqr_opt.get(),
-            "propka": self.use_propka.get(),
+            "use propka": self.use_propka.get(),
             "pH": self.ph.get(),
-            "FF": self.pqr_ff.get(),
+            "force field": self.pqr_ff.get(),
+            "assign only": self.pqr_assign_only.get()
         }
         psize_config = {
             "gspace": self.gspace.get(),
@@ -1106,6 +1120,8 @@ class BDPlugin(object):
             "pdie": self.solvent_dielectric.get(),
         }
         bd_config = {
+            "contacts file": self.contacts_f.get(),
+            "use default contacts file": self.default_contacts_f.get(),
             "ntraj": self.ntraj.get(),
             "nthreads": self.nthreads.get(),
             "mindx": self.mindx.get(),
@@ -1117,14 +1133,18 @@ class BDPlugin(object):
             "maxnsteps": self.maxnsteps.get(),
             "nsteps_per_output": self.nsteps_per_output.get(),
         }
-
-        data['pqr'] = pqr_config
+        bdtools_config ={
+            "version": __version__,
+            "date": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
+        data['paths'] = paths_config
+        data['pdb2pqr'] = pqr_config
         data['psize'] = psize_config
         data['apbs'] = apbs_config
-        data['bd'] = bd_config
-        
+        data['browndye'] = bd_config
+        data['bdtools'] = bdtools_config
         with open(configf, 'w') as f:
-            json.dump(data, f)
+            json.dump(data, f, indent=4, sort_keys=True)
         return
 
     def getPDBMol(self, n):
@@ -1762,7 +1782,8 @@ quit
         bdtop_input = 'input.xml'
         BDTOP_EXE = 'bd_top'
         if self.debyel[0].get() == 0.0:
-            print("::: Invalid Debye length!")
+            print("::: Invalid Debye length (%s)!" % self.debyel[0].get())
+            print("::: Acquire Debye length first")
             return
         with open(bdtop_input, "w") as f:
             f.write((nam_simulation_template %
@@ -1895,7 +1916,7 @@ quit
                 # xpath_str = 'trajectory[n-traj=" %d "]//s/n' % i
                 xpath_str = 'trajectory[n-traj=" %d "]//s' % i
                 j = d.xpath(xpath_str)
-                logline = ('trajectory %d: %s frames\n' 
+                logline = ('trajectory %d: approx. %s frames\n' 
                            % (i, len(j) * 20))
                 # % (i, j[0].text.strip()))
                 self.msg_ent.insert('end', "%s" % logline)
@@ -1948,8 +1969,10 @@ quit
     def loadTrajectoryFileXYZ(self):
         """Load XYZ trajectory to pymol."""
         xyz_trajectory_object = 'trajectory-%d' % self.traj_index_n.get()
+        print("::: Loading XYZ trajectory ...")
         try:
             pymol.cmd.load(self.xyz_ofile, xyz_trajectory_object)
+            print("::: Done.")
         except:
             e = sys.exc_info()[0]
             print("::: Loading xyz trajectory failed!")
@@ -1966,11 +1989,11 @@ quit
         return is_exe
         
     def exitBDPlugin(self, result):
-        """Quit BrownDye plugin."""
+        """Quit BrownDye Tools plugin."""
         #if tkMessageBox.askokcancel("Really quit?",
-        #                            "Exit BrownDye Plugin now?") == 0:
+        #                            "Exit BrownDye Tools Plugin now?") == 0:
         #    return 0
-        print("Exiting BrownDye Plugin ...")
+        print("Exiting BrownDye Tools Plugin ...")
         if __name__ == '__main__':
             self.parent.destroy()
         else:
