@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-08 12:46:03
+# Last modified: 2016-12-08 13:10:18
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -34,9 +34,9 @@ from lxml import etree
 import importlib
 import json
 
-DEBUG = 4
+DEBUG = 0
 
-__version__ = '0.2.0'
+__version__ = '0.3.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
 
 PDB2PQR_PATH = None
@@ -1266,6 +1266,10 @@ class BDPlugin(object):
 
     def pdb2pqr(self):
         """Convert PDB to PQR."""
+        if not os.path.exists(self.projectDir.get()):
+            print("::: Project directory does not exist!")
+            print("::: You need to set it first.")
+            return
         target_f = '%s.pdb' % MOL0
         if self.mol0_object.get() == 'None':
             # if not filecmp.cmp(self.mol0.get(), target_f):
