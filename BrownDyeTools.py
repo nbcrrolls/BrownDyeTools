@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-08 13:10:18
+# Last modified: 2016-12-08 14:30:57
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -62,8 +62,8 @@ psize_defaults = {
 }
 apbs_defaults = {
     'mode': 'lpbe',
-    'pdie': 4.0,
-    'sdie': 78.0,
+    'pdie': 2.0,
+    'sdie': 78.4,
     'srfm': 'smol',
     'chgm': 'spl2',
     'bcfl': 'sdh',
@@ -73,7 +73,7 @@ apbs_defaults = {
     'temp': 298.15,
     'ion_charge': [1, -1],
     'ion_conc': [0.15, 0.15],
-    'ion_radius': [1.0, 1.0],
+    'ion_radius': [2.0, 2.0],
 }
 
 bd_defaults = {
@@ -1546,7 +1546,7 @@ quit
         <atom> OD1 </atom> <residue> ASN </residue>
       </contact>
       <contact>
-        <atom> OE1 </atom> <residue> GLN</residue>
+        <atom> OE1 </atom> <residue> GLN </residue>
       </contact>
       <contact>
         <atom> OG </atom> <residue> SER </residue>
@@ -1664,7 +1664,7 @@ quit
         <atom> OD1 </atom> <residue> ASN </residue>
       </contact>
       <contact>
-        <atom> OE1 </atom> <residue> GLN</residue>
+        <atom> OE1 </atom> <residue> GLN </residue>
       </contact>
       <contact>
         <atom> OG </atom> <residue> SER </residue>
@@ -2111,11 +2111,14 @@ class MonitorThread(Thread):
                                      stderr=subprocess.PIPE, shell=True)
                 # p.wait()
                 stdout, stderr = p.communicate()
-                rates = etree.fromstring(stdout)
-                rate_constant = rates.xpath('//rate-constant/mean')[0].text.strip()
-                rxn_probability = rates.xpath('//reaction-probability/mean')[0].text.strip()
-                mymsg = ('%s / %s' % (rate_constant, rxn_probability))
-                self.msgbar3.message('state', mymsg)
+                try:
+                    rates = etree.fromstring(stdout)
+                    rate_constant = rates.xpath('//rate-constant/mean')[0].text.strip()
+                    rxn_probability = rates.xpath('//reaction-probability/mean')[0].text.strip()
+                    mymsg = ('%s / %s' % (rate_constant, rxn_probability))
+                    self.msgbar3.message('state', mymsg)
+                except XMLSyntaxError:
+                    print("::: rates etree parse XMLSyntaxError")
 
         time.sleep(2)
         if DEBUG > 2: print(self.mythread.is_alive())
@@ -2282,7 +2285,7 @@ class Psize(object):
 
 #############################################
 #
-# Create root window for testing.
+# Create root window for standalone GUI.
 #
 ##############################################
 if __name__ == '__main__':
