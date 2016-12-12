@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-12 13:34:51
+# Last modified: 2016-12-12 14:18:46
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -36,7 +36,7 @@ import json
 
 DEBUG = 0
 
-__version__ = '0.4.0'
+__version__ = '0.5.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
 
 PDB2PQR_PATH = None
@@ -1321,8 +1321,7 @@ quit
             if DEBUG > 2:
                 print(command)
                 print(grid_points)
-                print(cglen)
-                print(fglen)
+                print(cglen, fglen)
             print("::: Running apbs on %s ... " % MOL[i])
             gmem = 200.0 * grid_points[0] * grid_points[1] * grid_points[2] / 1024 / 1024
             print("::: Estimated memory requirements: %.3f MB" % gmem)
@@ -1339,8 +1338,7 @@ quit
     def getDebyeLength(self):
         dl = [[], []]
         for i in range(2):
-            mol = MOL[i]
-            fname = '%s-io.mc' % mol
+            fname = '%s-io.mc' % MOL[i]
             if DEBUG > 2: print("Parsing %s for Debye length ..." % fname)
             if not os.path.isfile(fname):
                 print("::: File %s does not exist!" % fname )
@@ -1353,7 +1351,7 @@ quit
                         dl[i].append(l[0].split(' ')[3])
             if len(dl[i]) == 0:
                 print("::: No Debye length found in %s for %s!" %
-                      (fname, mol))
+                      (fname, MOL[i]))
                 return
         if DEBUG > 2: print("Debye lengths: %s %s" %
                             (dl[0][-1], dl[1][-1]))
