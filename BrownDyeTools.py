@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-12 12:20:39
+# Last modified: 2016-12-12 13:34:51
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -34,7 +34,7 @@ from lxml import etree
 import importlib
 import json
 
-DEBUG = 3
+DEBUG = 0
 
 __version__ = '0.4.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
@@ -44,10 +44,10 @@ APBS_PATH = None
 BD_PATH = None
 CONFIG_FILE = 'bd-config.json'
 DEFAULT_CONTACTS_FILE = 'protein-protein-contacts-default.xml'
-MOL0 = 'mol0'
-MOL1 = 'mol1'
+MOL = ['mol0', 'mol1']
 APBS_EXE = 'apbs'
 PDB2PQR_EXE = 'pdb2pqr'
+BDTOP_EXE = 'bd_top'
 
 pqr_defaults = {
     'pqr_ff': 'parse',
@@ -137,15 +137,8 @@ if 'pymol.gui' in sys.modules:
         print("::: Pymol import failed - Pymol features not available!")
         pymol = DummyPymol()
 else:
-    print("::: Pymol import failed - some features will not available!")
+    print("::: Pymol import failed - Pymol features will not available!")
     pymol = DummyPymol()
-
-#try:
-#    # import pymol
-#    pymol = __import__(real_pymol)
-#except ImportError:
-#    print("::: Pymol import failed - Pymol features not available!")
-#    pymol = DummyPymol()
 
 class BDPlugin(object):
     """ The main BrowDye plugin class."""
@@ -174,18 +167,15 @@ class BDPlugin(object):
         self.config_file.set(CONFIG_FILE)
         
         # parameters used by pdb2pqr
-        self.mol0 = Tkinter.StringVar()
-        self.mol1 = Tkinter.StringVar()
-        self.mol0.set(None)
-        self.mol1.set(None)
-        self.pqr0 = Tkinter.StringVar()
-        self.pqr1 = Tkinter.StringVar()
-        self.pqr0.set(None)
-        self.pqr1.set(None)
-        self.mol0_object = Tkinter.StringVar()
-        self.mol1_object = Tkinter.StringVar()
-        self.mol0_object.set(None)
-        self.mol1_object.set(None)
+        self.mol = [Tkinter.StringVar(), Tkinter.StringVar()]
+        self.mol[0].set(None)
+        self.mol[1].set(None)
+        self.pqr = [Tkinter.StringVar(), Tkinter.StringVar()]
+        self.pqr[0].set(None)
+        self.pqr[1].set(None)
+        self.mol_object = [Tkinter.StringVar(), Tkinter.StringVar()]
+        self.mol_object[0].set(None)
+        self.mol_object[1].set(None)
         self.pqr_opts = Tkinter.StringVar()
         self.pqr_opts.set(pqr_defaults['pqr_opts'])
         self.pqr_assign_only = Tkinter.BooleanVar()
@@ -197,26 +187,19 @@ class BDPlugin(object):
         self.pqr_ff = Tkinter.StringVar()
         self.pqr_ff.set(pqr_defaults['pqr_ff'])
 
-        # APBS parameters and defaults
+        # psize/APBS parameters and defaults
         self.gspace = Tkinter.DoubleVar()
         self.gspace.set(psize_defaults['gspace'])
         self.cfac = Tkinter.DoubleVar()
         self.cfac.set(psize_defaults['cfac'])
         self.fadd = Tkinter.DoubleVar()
         self.fadd.set(psize_defaults['fadd'])
-        self.dime0 = [Tkinter.IntVar() for _ in range(3)]
-        [self.dime0[x].set(0) for x in range(3)]
-        self.cglen0 = [Tkinter.DoubleVar() for _ in range(3)]
-        [self.cglen0[x].set(0.0) for x in range(3)]
-        self.fglen0 = [Tkinter.DoubleVar() for _ in range(3)]
-        [self.fglen0[x].set(0.0) for x in range(3)]
-        self.dime1 = [Tkinter.IntVar() for _ in range(3)]
-        [self.dime1[x].set(0) for x in range(3)]
-        self.cglen1 = [Tkinter.DoubleVar() for _ in range(3)]
-        [self.cglen1[x].set(0.0) for x in range(3)]
-        self.fglen1 = [Tkinter.DoubleVar() for _ in range(3)]
-        [self.fglen1[x].set(0.0) for x in range(3)]
-
+        self.dime = [[Tkinter.IntVar() for _ in range(3)],
+                     [Tkinter.IntVar() for _ in range(3)]]
+        self.cglen = [[Tkinter.DoubleVar() for _ in range(3)],
+                      [Tkinter.DoubleVar() for _ in range(3)]]
+        self.fglen = [[Tkinter.DoubleVar() for _ in range(3)],
+                      [Tkinter.DoubleVar() for _ in range(3)]]
         self.apbs_mode = Tkinter.StringVar()
         self.apbs_mode.set(apbs_defaults['apbs_mode'])
         self.apbs_bcfl = Tkinter.StringVar()
@@ -228,7 +211,6 @@ class BDPlugin(object):
         self.apbs_ion_charge[1].set(apbs_defaults['apbs_ion_charge'][1])
         [self.apbs_ion_conc[x].set(apbs_defaults['apbs_ion_conc'][x]) for x in range(2)]
         [self.apbs_ion_radius[x].set(apbs_defaults['apbs_ion_radius'][x]) for x in range(2)]
-
         self.apbs_pdie = Tkinter.DoubleVar()
         self.apbs_pdie.set(apbs_defaults['apbs_pdie'])
         self.apbs_sdie = Tkinter.DoubleVar()
@@ -382,26 +364,26 @@ class BDPlugin(object):
         grp_pqr = Tkinter.LabelFrame(page, text='PQR files')
         grp_pqr.grid(sticky='eswn', row=0, column=0, columnspan=3, **pref)
 
-        pdb_0_ent = Pmw.EntryField(grp_pqr,
+        pdb0_ent = Pmw.EntryField(grp_pqr,
                                    label_text='Molecule 0 PDB file:', labelpos='wn',
-                                   entry_textvariable=self.mol0)
-        pdb_0_but = Tkinter.Button(grp_pqr, text='Browse...',
+                                   entry_textvariable=self.mol[0])
+        pdb0_but = Tkinter.Button(grp_pqr, text='Browse...',
                                    command=lambda: self.getPDBMol(0))
         label0 = Tkinter.Label(grp_pqr, text='or')
         pymol_obj0_opt = Pmw.OptionMenu(grp_pqr, labelpos='w',
                                         label_text='Select molecule 0: ',
-                                        menubutton_textvariable=self.mol0_object,
+                                        menubutton_textvariable=self.mol_object[0],
                                         menubutton_width=7,
                                         items=(['None'] + pymol.cmd.get_names("all")))
-        pdb_1_ent = Pmw.EntryField(grp_pqr,
+        pdb1_ent = Pmw.EntryField(grp_pqr,
                                    label_text='Molecule 1 PDB file:', labelpos='wn',
-                                   entry_textvariable=self.mol1)
-        pdb_1_but = Tkinter.Button(grp_pqr, text='Browse...',
+                                   entry_textvariable=self.mol[1])
+        pdb1_but = Tkinter.Button(grp_pqr, text='Browse...',
                                    command=lambda: self.getPDBMol(1))
         label1 = Tkinter.Label(grp_pqr, text='or')
         pymol_obj1_opt = Pmw.OptionMenu(grp_pqr, labelpos='w',
                                         label_text='Select molecule 1: ',
-                                        menubutton_textvariable=self.mol1_object,
+                                        menubutton_textvariable=self.mol_object[1],
                                         menubutton_width=7,
                                         items=(['None'] + pymol.cmd.get_names("all")))
         pqr_ff_opt = Pmw.OptionMenu(grp_pqr, labelpos='w',
@@ -430,21 +412,21 @@ class BDPlugin(object):
         label2 = Tkinter.Label(page, text='or load your PQR files:')
         pqr_0_ent = Pmw.EntryField(page,
                                    label_text='Molecule 0 PQR file:', labelpos='wn',
-                                   entry_textvariable=self.pqr0)
+                                   entry_textvariable=self.pqr[0])
         pqr_0_but = Tkinter.Button(page, text='Browse...',
-                                   command=self.getPQRMol0)
+                                   command=lambda: self.getPQRMol(0))
         pqr_1_ent = Pmw.EntryField(page,
                                    label_text='Molecule 1 PQR file:', labelpos='wn',
-                                   entry_textvariable=self.pqr1)
+                                   entry_textvariable=self.pqr[1])
         pqr_1_but = Tkinter.Button(page, text='Browse...',
-                                   command=self.getPQRMol1)
+                                   command=lambda: self.getPQRMol(1))
 
-        pdb_0_ent.grid(     sticky='we', row=0, column=0, **pref)
-        pdb_0_but.grid(     sticky='we', row=0, column=1, **pref)
+        pdb0_ent.grid(     sticky='we', row=0, column=0, **pref)
+        pdb0_but.grid(     sticky='we', row=0, column=1, **pref)
         label0.grid(        sticky='we', row=0, column=2, **pref)
         pymol_obj0_opt.grid(sticky='we', row=0, column=3, **pref)
-        pdb_1_ent.grid(     sticky='we', row=1, column=0, **pref)
-        pdb_1_but.grid(     sticky='we', row=1, column=1, **pref)
+        pdb1_ent.grid(     sticky='we', row=1, column=0, **pref)
+        pdb1_but.grid(     sticky='we', row=1, column=1, **pref)
         label1.grid(        sticky='we', row=1, column=2, **pref)
         pymol_obj1_opt.grid(sticky='we', row=1, column=3, **pref)
         pqr_ff_opt.grid(    sticky='we', row=2, column=0, **pref)
@@ -486,103 +468,103 @@ class BDPlugin(object):
         dime0_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                      label_text='dime: ',
                                      validate={'validator': 'integer', 'min': 0},
-                                     entry_textvariable=self.dime0[0],
+                                     entry_textvariable=self.dime[0][0],
                                      entry_width=5)
         dime0_1_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                      label_text='',
                                      validate={'validator': 'integer', 'min': 0},
-                                     entry_textvariable=self.dime0[1],
+                                     entry_textvariable=self.dime[0][1],
                                      entry_width=5)
         dime0_2_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                      label_text='',
                                      validate={'validator': 'integer', 'min': 0},
-                                     entry_textvariable=self.dime0[2],
+                                     entry_textvariable=self.dime[0][2],
                                      entry_width=5)
         cglen0_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='cglen: ',
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.cglen0[0],
+                                      entry_textvariable=self.cglen[0][0],
                                       entry_width=8)
         cglen0_1_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.cglen0[1],
+                                      entry_textvariable=self.cglen[0][1],
                                       entry_width=8)
         cglen0_2_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.cglen0[2],
+                                      entry_textvariable=self.cglen[0][2],
                                       entry_width=8)
         fglen0_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='fglen: ',
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.fglen0[0],
+                                      entry_textvariable=self.fglen[0][0],
                                       entry_width=8)
         fglen0_1_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.fglen0[1],
+                                      entry_textvariable=self.fglen[0][1],
                                       entry_width=8)
         fglen0_2_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.fglen0[2],
+                                      entry_textvariable=self.fglen[0][2],
                                       entry_width=8)
         get_size0_but = Tkinter.Button(grp_grids,
                                        text="Set grid",
-                                       command=self.getSizemol0)
+                                       command=lambda: self.getSizemol(0))
         label1 = Tkinter.Label(grp_grids, text='Molecule 1')
         dime1_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                      label_text='dime: ',
                                      # value=self.dime1[0].get(),
                                      validate={'validator': 'integer', 'min': 0},
-                                     entry_textvariable=self.dime1[0],
+                                     entry_textvariable=self.dime[1][0],
                                      entry_width=5)
         dime1_1_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                      label_text='',
                                      validate={'validator': 'integer', 'min': 0},
-                                     entry_textvariable=self.dime1[1],
+                                     entry_textvariable=self.dime[1][1],
                                      entry_width=5)
         dime1_2_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                      label_text='',
                                      validate={'validator': 'integer', 'min': 0},
-                                     entry_textvariable=self.dime1[2],
+                                     entry_textvariable=self.dime[1][2],
                                      entry_width=5)
 
         cglen1_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='cglen: ',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.cglen1[0],
+                                      entry_textvariable=self.cglen[1][0],
                                       entry_width=8)
         cglen1_1_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.cglen1[1],
+                                      entry_textvariable=self.cglen[1][1],
                                       entry_width=8)
         cglen1_2_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.cglen1[2],
+                                      entry_textvariable=self.cglen[1][2],
                                       entry_width=8)
         fglen1_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='fglen: ',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.fglen1[0],
+                                      entry_textvariable=self.fglen[1][0],
                                       entry_width=8)
         fglen1_1_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.fglen1[1],
+                                      entry_textvariable=self.fglen[1][1],
                                       entry_width=8)
         fglen1_2_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.fglen1[2],
+                                      entry_textvariable=self.fglen[1][2],
                                       entry_width=8)
 
         get_size1_but = Tkinter.Button(grp_grids,
                                        text="Set grid",
-                                       command=self.getSizemol1)
+                                       command=lambda: self.getSizemol(1))
 
         gspace_ent.grid(sticky='we', row=0, column=0, **pref)
         fadd_ent.grid(sticky='we', row=0, column=1, columnspan=2, **pref)
@@ -1144,16 +1126,13 @@ class BDPlugin(object):
 
     def getPDBMol(self, n):
         """Get molecule 0/1 PDB filename."""
-        fname = tkFileDialog.askopenfilename(title='PDB File',
+        fname = tkFileDialog.askopenfilename(title='Select PDB File',
                                              initialdir='',
                                              filetypes=[
                                                  ('pdb files', '*.pdb *.ent'),
                                                  ('all files', '*')],
                                              parent=self.parent)
-        if n == 0:
-            self.mol0.set(fname)
-        else:
-            self.mol1.set(fname)
+        self.mol[n].set(fname)
         return
         
     def selectMol0(self, result):
@@ -1184,41 +1163,25 @@ class BDPlugin(object):
         self.dialog1.activate()
         return
 
-    def getPQRMol0(self):
-        """Get molecule 0 PQR filename."""
-        fname = tkFileDialog.askopenfilename(title='PQR File',
+    def getPQRMol(self, n):
+        """Get molecule 0/1 PQR filename."""
+        fname = tkFileDialog.askopenfilename(title='Select PQR File',
                                              initialdir='',
                                              filetypes=[
                                                  ('pqr files', '*.pqr'),
                                                  ('all files', '*')],
                                              parent=self.parent)
         if len(fname) > 0:
-            self.pqr0.set(fname)
-            target_f = '%s/%s.pqr' % (self.projectDir.get(), MOL0)
+            self.pqr[n].set(fname)
+            target_f = '%s/%s.pqr' % (self.projectDir.get(), MOL[n])
             if fname != target_f:
                 if os.path.isfile(target_f): os.remove(target_f)
-                shutil.copyfile(self.pqr0.get(), target_f)
+                shutil.copyfile(self.pqr[n].get(), target_f)
         return
 
-    def getPQRMol1(self):
-        """Get molecule 1 PQR filename."""
-        fname = tkFileDialog.askopenfilename(title='PQR File',
-                                             initialdir='',
-                                             filetypes=[
-                                                 ('pqr files', '*.pqr'),
-                                                 ('all files', '*')],
-                                             parent=self.parent)
-        if len(fname) > 0:
-            self.pqr1.set(fname)
-            target_f = '%s/%s.pqr' % (self.projectDir.get(), MOL1)
-            if fname != target_f:
-                if os.path.isfile(target_f): os.remove(target_f)
-                shutil.copyfile(self.pqr1.get(), target_f)
-        return
-
-    def getSizemol0(self):
-        """Calculate APBS grid dimensions for molecule 0."""
-        pqr_fname = '%s.pqr' % MOL0
+    def getSizemol(self, n):
+        """Calculate APBS grid dimensions for molecule 0/1."""
+        pqr_fname = '%s.pqr' % MOL[n]
         if not os.path.isfile(pqr_fname):
             print("::: %s does not exist!" % pqr_fname)
             return
@@ -1228,28 +1191,11 @@ class BDPlugin(object):
         grid_points = psize.getFineGridPoints()
         cglen = psize.getCoarseGridDims()
         fglen = psize.getFineGridDims()
-        [self.dime0[x].set(grid_points[x]) for x in range(3)]
-        [self.cglen0[x].set(cglen[x]) for x in range(3)]
-        [self.fglen0[x].set(fglen[x]) for x in range(3)]
+        [self.dime[n][x].set(grid_points[x]) for x in range(3)]
+        [self.cglen[n][x].set(cglen[x]) for x in range(3)]
+        [self.fglen[n][x].set(fglen[x]) for x in range(3)]
         return
 
-    def getSizemol1(self):
-        """Calculate APBS grid dimensions for molecule 1."""
-        pqr_fname = '%s.pqr' % MOL1
-        if not os.path.isfile(pqr_fname):
-            print("::: %s does not exist!" % pqr_fname)
-            return
-        psize = Psize(self)
-        psize.runPsize(pqr_fname)
-        #print(psize.getCharge())
-        grid_points = psize.getFineGridPoints()
-        cglen = psize.getCoarseGridDims()
-        fglen = psize.getFineGridDims()
-        [self.dime1[x].set(grid_points[x]) for x in range(3)]
-        [self.cglen1[x].set(cglen[x]) for x in range(3)]
-        [self.fglen1[x].set(fglen[x]) for x in range(3)]
-        return
-    
     def getContacts(self):
         """Get contacts file."""
         fname = tkFileDialog.askopenfilename(
@@ -1265,38 +1211,26 @@ class BDPlugin(object):
             print("::: Project directory does not exist!")
             print("::: You need to set it first.")
             return
-        target_f = '%s.pdb' % MOL0
-        if self.mol0_object.get() == 'None':
-            # if not filecmp.cmp(self.mol0.get(), target_f):
-            try:
-                shutil.copyfile(self.mol0.get(), target_f)
-            except:
-                e = sys.exc_info()[0]
-                print(e)
-                print("::: Creating of %s failed!" % target_f)
-                return
-        else:
-            pymol.cmd.save(filename=target_f,
-                           selection=self.mol0_object.get())
-        target_f = '%s.pdb' % MOL1
-        if self.mol1_object.get() == 'None':
-            # if not filecmp.cmp(self.mol1.get(), target_f):
-            try:
-                shutil.copyfile(self.mol1.get(), target_f)
-            except:
-                e = sys.exc_info()[0]
-                print(e)
-                print("::: Creating of %s failed!" % target_f)
-                return
-        else:
-            pymol.cmd.save(filename=target_f,
-                           selection=self.mol1_object.get())
-
-        assign_only = ''
-        if self.pqr_assign_only.get(): assign_only = '--assign-only'
+        for i in range(2):
+            target_f = '%s.pdb' % MOL[i]
+            if self.mol_object[i].get() == 'None':
+                # if not filecmp.cmp(self.mol0.get(), target_f):
+                try:
+                    shutil.copyfile(self.mol[i].get(), target_f)
+                except:
+                    e = sys.exc_info()[0]
+                    print(e)
+                    print("::: Creating of %s failed!" % target_f)
+                    return
+            else:
+                pymol.cmd.save(filename=target_f,
+                               selection=self.mol_object[i].get())
+        if self.pqr_assign_only.get():
+            assign_only = '--assign-only'
+            use_propka = ''
         if self.pqr_use_propka.get():
-            use_propka = '--ph-calc-method=propka --with-ph=%s --drop-water' % self.pqr_ph.get()
             assign_only = ''
+            use_propka = '--ph-calc-method=propka --with-ph=%s --drop-water' % self.pqr_ph.get()
             self.pqr_ff.set('parse')
             print("::: Using PROPKA to assign protonation states and "
                   "optimizing the structure.\n"
@@ -1306,8 +1240,8 @@ class BDPlugin(object):
                        (assign_only, use_propka, self.pqr_opts.get(),
                         self.pqr_ff.get()))
         pdb2pqr_exe = ('%s/%s' % (self.pdb2pqr_path.get(), PDB2PQR_EXE))
-        if not self.check_exe(pdb2pqr_exe): return
-        for i in [MOL0, MOL1]:
+        if not self.checkExe(pdb2pqr_exe): return
+        for i in MOL:
             command = ('%s %s %s.pdb %s.pqr' %
                        (pdb2pqr_exe, pqr_options, i, i))
             if DEBUG > 2: print(command)
@@ -1354,22 +1288,17 @@ print elecEnergy 1 end
 quit
 """
         apbs_exe = '%s/%s' % (self.apbs_path.get(), APBS_EXE)
-        if not self.check_exe(apbs_exe): return
-        for i in [MOL0, MOL1]:
-            pqr_filename = '%s.pqr' % i
-            if i == MOL0:
-                grid_points = [self.dime0[x].get() for x in range(3)]
-                cglen = [self.cglen0[x].get() for x in range(3)]
-                fglen = [self.fglen0[x].get() for x in range(3)]
-            if i == MOL1:
-                grid_points = [self.dime1[x].get() for x in range(3)]
-                cglen = [self.cglen1[x].get() for x in range(3)]
-                fglen = [self.fglen1[x].get() for x in range(3)]
+        if not self.checkExe(apbs_exe): return
+        for i in range(2):
+            pqr_filename = '%s.pqr' % MOL[i]
+            grid_points = [self.dime[i][x].get() for x in range(3)]
+            cglen = [self.cglen[i][x].get() for x in range(3)]
+            fglen = [self.fglen[i][x].get() for x in range(3)]
             if grid_points[0] == 0 or grid_points[1] == 0 or grid_points[2] == 0:
-                print("::: %s - no grid points defined!" % i)
+                print("::: %s - no grid points defined!" % MOL[i])
                 return
-            dx_filename = i
-            fout = '%s.in' % i
+            dx_filename = MOL[i]
+            fout = '%s.in' % MOL[i]
             with open(fout, "w") as f:
                 f.write((apbs_template %
                          (pqr_filename,
@@ -1388,18 +1317,18 @@ quit
                           self.apbs_swin.get(), self.apbs_temp.get(),
                           dx_filename)))
 
-            command = 'MCSH_HOME=. %s %s.in' % (apbs_exe, i)
+            command = 'MCSH_HOME=. %s %s.in' % (apbs_exe, MOL[i])
             if DEBUG > 2:
                 print(command)
                 print(grid_points)
                 print(cglen)
                 print(fglen)
-            print("::: Running apbs on %s ... " % i)
+            print("::: Running apbs on %s ... " % MOL[i])
             gmem = 200.0 * grid_points[0] * grid_points[1] * grid_points[2] / 1024 / 1024
             print("::: Estimated memory requirements: %.3f MB" % gmem)
             rc = self.runCmd(command)
             if rc == 0:
-                iomc = '%s-io.mc' % i
+                iomc = '%s-io.mc' % MOL[i]
                 if os.path.isfile(iomc): os.remove(iomc)
                 shutil.copyfile('io.mc', iomc)
                 print("::: Done.")
@@ -1410,8 +1339,7 @@ quit
     def getDebyeLength(self):
         dl = [[], []]
         for i in range(2):
-            if i == 0: mol = MOL0
-            if i == 1: mol = MOL1
+            mol = MOL[i]
             fname = '%s-io.mc' % mol
             if DEBUG > 2: print("Parsing %s for Debye length ..." % fname)
             if not os.path.isfile(fname):
@@ -1439,8 +1367,8 @@ quit
     def runPqr2xml(self):
         """Run pqr2xml on mol0 and mol1 PQR files. """
         pqr2xml_exe = '%s/pqr2xml' % self.bd_path.get()
-        if not self.check_exe(pqr2xml_exe): return
-        for i in [MOL0, MOL1]:
+        if not self.checkExe(pqr2xml_exe): return
+        for i in MOL:
             command = ('%s < %s.pqr > %s-atoms.pqrxml'
                        % (pqr2xml_exe, i, i))
             if DEBUG > 2: print(command)
@@ -1710,8 +1638,8 @@ quit
         command = ('%s/make_rxn_pairs '
                    '-nonred -mol0 %s-atoms.pqrxml -mol1 %s-atoms.pqrxml '
                    '-ctypes %s  -dist %f > %s-%s-rxn-pairs.xml'
-                   % (self.bd_path.get(), MOL0, MOL1, self.contacts_f.get(),
-                      self.rxn_distance.get(), MOL0, MOL1))
+                   % (self.bd_path.get(), MOL[0], MOL[1], self.contacts_f.get(),
+                      self.rxn_distance.get(), MOL[0], MOL[1]))
         if DEBUG > 2: print(command)
         print("::: Running make_rxn_pairs ...")
         rc = self.runCmd(command)
@@ -1722,8 +1650,8 @@ quit
         command =('%s/make_rxn_file '
                   '-pairs %s-%s-rxn-pairs.xml -distance %f '
                   ' -nneeded %d > %s-%s-rxns.xml'
-                  % (self.bd_path.get(), MOL0, MOL1, self.rxn_distance.get(),
-                     self.npairs.get(), MOL0, MOL1))
+                  % (self.bd_path.get(), MOL[0], MOL[1], self.rxn_distance.get(),
+                     self.npairs.get(), MOL[0], MOL[1]))
         if DEBUG > 2: print(command)
         print("::: Running make_rxn_file ...")
         rc = self.runCmd(command)
@@ -1779,7 +1707,6 @@ quit
 </root>
 """
         bdtop_input = 'input.xml'
-        BDTOP_EXE = 'bd_top'
         if self.debyel[0].get() == 0.0:
             print("::: Invalid Debye length (%s)!" % self.debyel[0].get())
             print("::: Acquire Debye length first")
@@ -1788,15 +1715,15 @@ quit
             f.write((nam_simulation_template %
                      (self.sdie.get(), self.debyel[0].get(),
                       self.ntraj.get(), self.nthreads.get(),
-                      MOL0, MOL0, MOL0, self.pdie[0].get(),
-                      MOL1, MOL1, MOL1, self.pdie[1].get(),
-                      self.mindx.get(), MOL0, MOL1,
+                      MOL[0], MOL[0], MOL[0], self.pdie[0].get(),
+                      MOL[1], MOL[1], MOL[1], self.pdie[1].get(),
+                      self.mindx.get(), MOL[0], MOL[1],
                       self.ntrajo.get(),
                       self.ncopies.get(), self.nbincopies.get(),
                       self.nsteps.get(), self.westeps.get(),
                       self.maxnsteps.get(),
                       self.nsteps_per_output.get())))
-        for i in [MOL0, MOL1]:
+        for i in MOL:
             dxfile = '%s.dx' % i
             if not os.path.isfile(dxfile):
                 print("::: %s DX file does not exist!" % dxfile)
@@ -1820,9 +1747,9 @@ quit
         """Start BrownDye simulation either in foreground or background."""
         print("::: Starting BrownDye simulation ...")
         nam_simulation_exe = '%s/nam_simulation' % self.bd_path.get()
-        if not self.check_exe(nam_simulation_exe): return
+        if not self.checkExe(nam_simulation_exe): return
         command = ('%s %s-%s-simulation.xml'
-                   % (nam_simulation_exe, MOL0, MOL1))
+                   % (nam_simulation_exe, MOL[0], MOL[1]))
         if self.run_in_background.get():
             p = subprocess.Popen(" nohup %s" % command, shell=True)
             global JOBPID
@@ -1951,7 +1878,7 @@ quit
         self.xyz_ofile = 'trajectory-%d.xyz' % self.traj_index_n.get()
         command = ('%s/xyz_trajectory -mol0 %s-atoms.pqrxml '
                    '-mol1 %s-atoms.pqrxml -trajf %s > %s'
-                   % (self.bd_path.get(), MOL0, MOL1, ofile, self.xyz_ofile))
+                   % (self.bd_path.get(), MOL[0], MOL[1], ofile, self.xyz_ofile))
         print("::: Converting %s to XYZ trajectory ..." % ofile)
         rc = self.runCmd(command)
         if rc == 0:
@@ -1978,7 +1905,7 @@ quit
             print("::: Error: %s" % e)
         return
 
-    def check_exe(self, command):
+    def checkExe(self, command):
         """Check if command exists and is executable."""
         if os.path.isfile(command) and os.access(command, os.X_OK):
             is_exe = True
