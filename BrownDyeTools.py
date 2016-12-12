@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-12 10:47:48
+# Last modified: 2016-12-12 12:20:39
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -34,7 +34,7 @@ from lxml import etree
 import importlib
 import json
 
-DEBUG = 0
+DEBUG = 3
 
 __version__ = '0.4.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
@@ -56,7 +56,6 @@ pqr_defaults = {
     'pqr_assign_only': True,
     'pqr_use_propka': False,
 }
-
 psize_defaults = {
     'cfac': 3.0,
     'fadd': 50.0,
@@ -77,15 +76,15 @@ apbs_defaults = {
     'apbs_ion_conc': [0.15, 0.15],
     'apbs_ion_radius': [1.0, 1.0],
 }
-
 bd_defaults = {
+    'contacts_f': DEFAULT_CONTACTS_FILE,
+    'default_contacts_f': True,
     'ntraj': 100,
     'nthreads': 1,
     'mindx': 0.2,
     'sdie': apbs_defaults['apbs_sdie'],
-    'pdie0': apbs_defaults['apbs_pdie'],
-    'pdie1': apbs_defaults['apbs_pdie'],
-    'debyel': 0.0,
+    'pdie': [apbs_defaults['apbs_pdie'], apbs_defaults['apbs_pdie']],
+    'debyel': [0.0, 0.0],
     'ntrajo': 1,
     'ncopies': 200,
     'nbincopies': 200,
@@ -130,9 +129,6 @@ class DummyPymol(object):
             else:
                 return 'object:map'
     cmd = Cmd()
-
-#real_pymol = 'pymol'
-#if DEBUG > 4: real_pymol = 'pymold'
 
 if 'pymol.gui' in sys.modules:
     try:
@@ -252,21 +248,21 @@ class BDPlugin(object):
 
         # reaction criteria
         self.contacts_f = Tkinter.StringVar()
-        self.contacts_f.set('protein-protein-contacts.xml')
+        self.contacts_f.set(bd_defaults['contacts_f'])
         self.default_contacts_f = Tkinter.BooleanVar()
-        self.default_contacts_f.set(False)
+        self.default_contacts_f.set(bd_defaults['default_contacts_f'])
         self.rxn_distance = Tkinter.DoubleVar()
         self.rxn_distance.set(bd_defaults['rxn_distance'])
         self.npairs = Tkinter.IntVar()
         self.npairs.set(bd_defaults['npairs'])
         
         # BD parameters and defaults
-        self.solvent_eps = Tkinter.DoubleVar()
-        self.solvent_eps.set(self.apbs_sdie.get())
-        self.mol_eps = [Tkinter.DoubleVar() for _ in range(2)]
-        [self.mol_eps[x].set(self.apbs_pdie.get())  for x in range(2)]
+        self.sdie = Tkinter.DoubleVar()
+        self.sdie.set(self.apbs_sdie.get())
+        self.pdie = [Tkinter.DoubleVar() for _ in range(2)]
+        [self.pdie[x].set(self.apbs_pdie.get())  for x in range(2)]
         self.debyel = [Tkinter.DoubleVar() for _ in range(2)]
-        [self.debyel[x].set(bd_defaults['debyel']) for x in range(2)]
+        [self.debyel[x].set(bd_defaults['debyel'][x]) for x in range(2)]
         self.ntraj = Tkinter.IntVar()
         self.ntraj.set(bd_defaults['ntraj'])
         self.nthreads = Tkinter.IntVar()
@@ -769,24 +765,24 @@ class BDPlugin(object):
         grp_bdinput = Tkinter.LabelFrame(page, text='BrownDye input file')
         grp_bdinput.grid(sticky='eswn', row=0, column=0, columnspan=2, **pref)
 
-        solvent_eps_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
-                                         label_text='Solvent eps: ',
-                                         validate={'validator': 'real', 'min': 0.0},
-                                         entry_textvariable=self.solvent_eps, entry_width=5)
+        sdie_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
+                                  label_text='Solvent eps: ',
+                                  validate={'validator': 'real', 'min': 0.0},
+                                  entry_textvariable=self.sdie, entry_width=5)
         debyel_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
                                     label_text='Solvent Debye length: ',
                                     validate={'validator': 'real', 'min': 0.0},
                                     entry_textvariable=self.debyel[0], entry_width=5)
         get_debyel_but = Tkinter.Button(grp_bdinput, text='Get Debye length',
                                         command=self.getDebyeLength)
-        mol0_eps_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
-                                      label_text='Molecule 0 eps: ',
-                                      validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.mol_eps[0], entry_width=5)
-        mol1_eps_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
-                                      label_text='Molecule 1 eps: ',
-                                      validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.mol_eps[1], entry_width=5)
+        pdie0_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
+                                   label_text='Molecule 0 eps: ',
+                                   validate={'validator': 'real', 'min': 0.0},
+                                   entry_textvariable=self.pdie[0], entry_width=5)
+        pdie1_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
+                                   label_text='Molecule 1 eps: ',
+                                   validate={'validator': 'real', 'min': 0.0},
+                                   entry_textvariable=self.pdie[1], entry_width=5)
         ntraj_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
                                    label_text='Number of trajectories: ',
                                    validate={'validator': 'integer', 'min': 1},
@@ -835,11 +831,11 @@ class BDPlugin(object):
                                          labelpos='w', label_text='Status:')
         self.status_bar.message('state', '')
 
-        solvent_eps_ent.grid(sticky='we', row=1, column=0, **pref)
+        sdie_ent.grid(sticky='we', row=1, column=0, **pref)
         debyel_ent.grid(     sticky='we', row=2, column=0, **pref)
         get_debyel_but.grid( sticky='w',  row=2, column=1, **pref)
-        mol0_eps_ent.grid(   sticky='we', row=3, column=0, **pref)
-        mol1_eps_ent.grid(   sticky='we', row=3, column=1, **pref)
+        pdie0_ent.grid(   sticky='we', row=3, column=0, **pref)
+        pdie1_ent.grid(   sticky='we', row=3, column=1, **pref)
 
         ntraj_ent.grid(      sticky='we', row=4, column=0, **pref)
         nthreads_ent.grid(   sticky='we', row=4, column=1, **pref)
@@ -1087,7 +1083,6 @@ class BDPlugin(object):
         for k in psize_defaults:
             getattr(self, k).set(psize_config[k])
         apbs_config = data['apbs']
-#        v = ['interior_dielectric', 'solvent_dielectric']
         for k in apbs_defaults:
             try:
                 getattr(self, k).set(apbs_config[k])
@@ -1095,11 +1090,7 @@ class BDPlugin(object):
                 getattr(self, k)[0].set(apbs_config[k][0])
                 getattr(self, k)[1].set(apbs_config[k][1])
         bd_config = data["browndye"]
-        v = ['contacts_f', 'default_contacts_f', 'ntraj', 'nthreads', 'mindx',
-             'solvent_eps', 'mol_eps', 'debyel', 'ntrajo', 'ncopies', 'nbincopies',
-             'nsteps', 'westeps',
-             'maxnsteps', 'nsteps_per_output', 'rxn_distance', 'npairs']
-        for k in v:
+        for k in bd_defaults:
             try:
                 getattr(self, k).set(bd_config[k])
             except AttributeError:
@@ -1124,7 +1115,6 @@ class BDPlugin(object):
         for k in psize_defaults:
             psize_config[k] = getattr(self, k).get()
         apbs_config = {}
-        #v = ['interior_dielectric', 'solvent_dielectric']
         for k in apbs_defaults:
             try:
                 apbs_config[k] = getattr(self, k).get()
@@ -1132,11 +1122,7 @@ class BDPlugin(object):
                 apbs_config[k] = [getattr(self, k)[0].get(),
                                   getattr(self, k)[1].get()]
         bd_config = {}
-        v = ['contacts_f', 'default_contacts_f', 'ntraj', 'nthreads', 'mindx',
-             'solvent_eps', 'mol_eps', 'debyel', 'ntrajo', 'ncopies', 'nbincopies',
-             'nsteps', 'westeps',
-             'maxnsteps', 'nsteps_per_output', 'rxn_distance', 'npairs']
-        for k in v:
+        for k in bd_defaults:
             try:
                 bd_config[k] = getattr(self, k).get()
             except AttributeError:
@@ -1800,10 +1786,10 @@ quit
             return
         with open(bdtop_input, "w") as f:
             f.write((nam_simulation_template %
-                     (self.solvent_eps.get(), self.debyel[0].get(),
+                     (self.sdie.get(), self.debyel[0].get(),
                       self.ntraj.get(), self.nthreads.get(),
-                      MOL0, MOL0, MOL0, self.mol_eps[0].get(),
-                      MOL1, MOL1, MOL1, self.mol_eps[1].get(),
+                      MOL0, MOL0, MOL0, self.pdie[0].get(),
+                      MOL1, MOL1, MOL1, self.pdie[1].get(),
                       self.mindx.get(), MOL0, MOL1,
                       self.ntrajo.get(),
                       self.ncopies.get(), self.nbincopies.get(),
