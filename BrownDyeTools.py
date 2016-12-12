@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-08 13:10:18
+# Last modified: 2016-12-12 10:29:37
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -36,7 +36,7 @@ import json
 
 DEBUG = 0
 
-__version__ = '0.3.0'
+__version__ = '0.4.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
 
 PDB2PQR_PATH = None
@@ -50,15 +50,17 @@ APBS_EXE = 'apbs'
 PDB2PQR_EXE = 'pdb2pqr'
 
 pqr_defaults = {
-    'force_field': 'parse',
-    'options': '--apbs-input --chain',
-    'pH': 7.0,
+    'pqr_ff': 'parse',
+    'pqr_opts': '--apbs-input --chain',
+    'pqr_ph': 7.0,
+    'pqr_assign_only': True,
+    'pqr_use_propka': False,
 }
 
 psize_defaults = {
     'cfac': 3.0,
     'fadd': 50.0,
-    'space': 0.5,
+    'gspace': 0.5,
 }
 apbs_defaults = {
     'mode': 'lpbe',
@@ -90,9 +92,9 @@ bd_defaults = {
     'nsteps': 10000,
     'westeps': 10000,
     'maxnsteps': 10000,
+    'nsteps_per_output': 2,
     'rxn_distance': 5.0,
     'npairs': 3,
-    'nsteps_per_output': 2,
 }
 
 if DEBUG > 0:
@@ -129,14 +131,25 @@ class DummyPymol(object):
                 return 'object:map'
     cmd = Cmd()
 
-real_pymol = 'pymol'
-if DEBUG > 4: real_pymol = 'pymold'
-try:
-    # import pymol
-    pymol = __import__(real_pymol)
-except ImportError:
-    print("::: Pymol import failed - Pymol features not available!")
+#real_pymol = 'pymol'
+#if DEBUG > 4: real_pymol = 'pymold'
+
+if 'pymol.gui' in sys.modules:
+    try:
+        import pymol
+    except ImportError:
+        print("::: Pymol import failed - Pymol features not available!")
+        pymol = DummyPymol()
+else:
+    print("::: Pymol import failed - some features will not available!")
     pymol = DummyPymol()
+
+#try:
+#    # import pymol
+#    pymol = __import__(real_pymol)
+#except ImportError:
+#    print("::: Pymol import failed - Pymol features not available!")
+#    pymol = DummyPymol()
 
 class BDPlugin(object):
     """ The main BrowDye plugin class."""
@@ -177,20 +190,22 @@ class BDPlugin(object):
         self.mol1_object = Tkinter.StringVar()
         self.mol0_object.set(None)
         self.mol1_object.set(None)
-        self.pdb2pqr_opt = Tkinter.StringVar()
-        self.pdb2pqr_opt.set(pqr_defaults['options'])
+        self.pqr_opts = Tkinter.StringVar()
+        self.pqr_opts.set(pqr_defaults['pqr_opts'])
         self.pqr_assign_only = Tkinter.BooleanVar()
-        self.pqr_assign_only.set(True)
-        self.use_propka = Tkinter.BooleanVar()
-        self.use_propka.set(False)
-        self.ph = Tkinter.DoubleVar()
-        self.ph.set(pqr_defaults['pH'])
+        self.pqr_assign_only.set(pqr_defaults['pqr_assign_only'])
+        self.pqr_use_propka = Tkinter.BooleanVar()
+        self.pqr_use_propka.set(pqr_defaults['pqr_use_propka'])
+        self.pqr_ph = Tkinter.DoubleVar()
+        self.pqr_ph.set(pqr_defaults['pqr_ph'])
         self.pqr_ff = Tkinter.StringVar()
-        self.pqr_ff.set(pqr_defaults['force_field'])
+        self.pqr_ff.set(pqr_defaults['pqr_ff'])
 
         # APBS parameters and defaults
         self.gspace = Tkinter.DoubleVar()
-        self.gspace.set(psize_defaults['space'])
+        self.gspace.set(psize_defaults['gspace'])
+        self.cfac = Tkinter.DoubleVar()
+        self.cfac.set(psize_defaults['cfac'])
         self.fadd = Tkinter.DoubleVar()
         self.fadd.set(psize_defaults['fadd'])
         self.dime0 = [Tkinter.IntVar() for _ in range(3)]
@@ -406,13 +421,13 @@ class BDPlugin(object):
                                          command=lambda: propka_but.toggle())
         propka_but = Tkinter.Checkbutton(grp_pqr,
                                          text=('Use PROPKA to assign protonation states'),
-                                         variable=self.use_propka,
+                                         variable=self.pqr_use_propka,
                                          onvalue=True, offvalue=False,
                                          command=lambda: pqr_an_but.toggle())
         ph_ent = Pmw.EntryField(grp_pqr, labelpos='w',
                                 label_text='pH: ',
                                 validate={'validator': 'real', 'min': 0.00},
-                                entry_textvariable=self.ph,
+                                entry_textvariable=self.pqr_ph,
                                 entry_width=4)
         pqr_opt_but = Tkinter.Button(page, text='Create PQR files',
                                      command=self.pdb2pqr)
@@ -1060,38 +1075,32 @@ class BDPlugin(object):
         with open(configf) as f:    
             data = json.load(f)
 
-        pqr_config = data["pdb2pqr"]
-        self.pdb2pqr_opt.set(pqr_config["opt"])
-        self.use_propka.set(pqr_config["use propka"])
-        self.pqr_assign_only.set(pqr_config["assign only"])
-        self.ph.set(pqr_config["pH"])
-        self.pqr_ff.set(pqr_config["force field"])
-
-        self.gspace.set(data["psize"]["gspace"])
-        self.fadd.set(data["psize"]["fadd"])
-                        
-        self.interior_dielectric.set(data["apbs"]["sdie"])
-        self.solvent_dielectric.set(data["apbs"]["pdie"])
-        
         self.pdb2pqr_path.set(data['paths']['PDB2PQR_PATH'])
         self.apbs_path.set(data['paths']['APBS_PATH'])
         self.bd_path.set(data['paths']['BD_PATH'])
         self.projectDir.set(data['paths']['ProjectDir'])    
 
+        pqr_config = data['pdb2pqr']
+        for name in pqr_defaults:
+            getattr(self, name).set(pqr_config[name])
+        psize_config = data['psize']
+        for name in psize_defaults:
+            getattr(self, name).set(psize_config[name])
+        apbs_config = data['apbs']
+        v = ['interior_dielectric', 'solvent_dielectric']
+        for name in v:
+            getattr(self, name).set(apbs_config[name])
         bd_config = data["browndye"]
-        self.contacts_f.set(bd_config["contacts file"])
-        self.default_contacts_f.set(bd_config["use default contacts file"])
-        self.ntraj.set(bd_config["ntraj"])
-        self.nthreads.set(bd_config["nthreads"])
-        self.mindx.set(bd_config["mindx"])
-        self.ntrajo.set(bd_config["ntrajo"])
-        self.ncopies.set(bd_config["ncopies"])
-        self.nbincopies.set(bd_config["nbincopies"])
-        self.nsteps.set(bd_config["nsteps"])
-        self.westeps.set(bd_config["westeps"])
-        self.maxnsteps.set(bd_config["maxnsteps"])
-        self.nsteps_per_output.set(bd_config["nsteps_per_output"])
-
+        v = ['contacts_f', 'default_contacts_f', 'ntraj', 'nthreads', 'mindx',
+             'solvent_eps', 'mol_eps', 'debyel', 'ntrajo', 'ncopies', 'nbincopies',
+             'nsteps', 'westeps',
+             'maxnsteps', 'nsteps_per_output', 'rxn_distance', 'npairs']
+        for name in v:
+            try:
+                getattr(self, name).set(bd_config[name])
+            except AttributeError:
+                getattr(self, name)[0].set(bd_config[name][0])
+                getattr(self, name)[1].set(bd_config[name][1])
         return
 
     def saveConfig(self):
@@ -1104,35 +1113,28 @@ class BDPlugin(object):
             "BD_PATH": self.bd_path.get(),
             "ProjectDir": self.projectDir.get()
         }
-        pqr_config = {
-            "opt": self.pdb2pqr_opt.get(),
-            "use propka": self.use_propka.get(),
-            "pH": self.ph.get(),
-            "force field": self.pqr_ff.get(),
-            "assign only": self.pqr_assign_only.get()
-        }
-        psize_config = {
-            "gspace": self.gspace.get(),
-            "fadd": self.fadd.get(),
-        }
-        apbs_config = {
-            "sdie": self.interior_dielectric.get(),
-            "pdie": self.solvent_dielectric.get(),
-        }
-        bd_config = {
-            "contacts file": self.contacts_f.get(),
-            "use default contacts file": self.default_contacts_f.get(),
-            "ntraj": self.ntraj.get(),
-            "nthreads": self.nthreads.get(),
-            "mindx": self.mindx.get(),
-            "ntrajo": self.ntrajo.get(),
-            "ncopies": self.ncopies.get(),
-            "nbincopies": self.nbincopies.get(),
-            "nsteps": self.nsteps.get(),
-            "westeps": self.westeps.get(),
-            "maxnsteps": self.maxnsteps.get(),
-            "nsteps_per_output": self.nsteps_per_output.get(),
-        }
+        pqr_config = {}
+        for name in pqr_defaults:
+            pqr_config[name] = getattr(self, name).get()
+        psize_config = {}
+        for name in psize_defaults:
+            psize_config[name] = getattr(self, name).get()
+        apbs_config = {}
+        v = ['interior_dielectric', 'solvent_dielectric']
+        for name in v:
+            apbs_config[name] = getattr(self, name).get()
+        bd_config = {}
+        v = ['contacts_f', 'default_contacts_f', 'ntraj', 'nthreads', 'mindx',
+             'solvent_eps', 'mol_eps', 'debyel', 'ntrajo', 'ncopies', 'nbincopies',
+             'nsteps', 'westeps',
+             'maxnsteps', 'nsteps_per_output', 'rxn_distance', 'npairs']
+        #bd_config['mol_eps'] = [self.mol_eps[0].get(), self.mol_eps[1].get()]
+        for name in v:
+            try:
+                bd_config[name] = getattr(self, name).get()
+            except AttributeError:
+                bd_config[name] = [getattr(self, name)[0].get(),
+                                   getattr(self, name)[1].get()]
         bdtools_config ={
             "version": __version__,
             "date": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -1299,8 +1301,8 @@ class BDPlugin(object):
 
         assign_only = ''
         if self.pqr_assign_only.get(): assign_only = '--assign-only'
-        if self.use_propka.get():
-            use_propka = '--ph-calc-method=propka --with-ph=%s --drop-water' % self.ph.get()
+        if self.pqr_use_propka.get():
+            use_propka = '--ph-calc-method=propka --with-ph=%s --drop-water' % self.pqr_ph.get()
             assign_only = ''
             self.pqr_ff.set('parse')
             print("::: Using PROPKA to assign protonation states and "
@@ -1308,7 +1310,7 @@ class BDPlugin(object):
                   "The force field is set to PARSE.")
 
         pqr_options = ('%s %s %s --ff=%s' %
-                       (assign_only, use_propka, self.pdb2pqr_opt.get(),
+                       (assign_only, use_propka, self.pqr_opts.get(),
                         self.pqr_ff.get()))
         pdb2pqr_exe = ('%s/%s' % (self.pdb2pqr_path.get(), PDB2PQR_EXE))
         if not self.check_exe(pdb2pqr_exe): return
