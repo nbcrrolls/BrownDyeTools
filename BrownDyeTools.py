@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-12 10:29:37
+# Last modified: 2016-12-12 10:47:48
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -63,28 +63,28 @@ psize_defaults = {
     'gspace': 0.5,
 }
 apbs_defaults = {
-    'mode': 'lpbe',
-    'pdie': 4.0,
-    'sdie': 78.0,
-    'srfm': 'smol',
-    'chgm': 'spl2',
-    'bcfl': 'sdh',
-    'sdens': 10.,
-    'swin': 0.3,
-    'srad': 1.4,
-    'temp': 298.15,
-    'ion_charge': [1, -1],
-    'ion_conc': [0.15, 0.15],
-    'ion_radius': [1.0, 1.0],
+    'apbs_mode': 'lpbe',
+    'apbs_pdie': 4.0,
+    'apbs_sdie': 78.0,
+    'apbs_srfm': 'smol',
+    'apbs_chgm': 'spl2',
+    'apbs_bcfl': 'sdh',
+    'apbs_sdens': 10.,
+    'apbs_swin': 0.3,
+    'apbs_srad': 1.4,
+    'apbs_temp': 298.15,
+    'apbs_ion_charge': [1, -1],
+    'apbs_ion_conc': [0.15, 0.15],
+    'apbs_ion_radius': [1.0, 1.0],
 }
 
 bd_defaults = {
     'ntraj': 100,
     'nthreads': 1,
     'mindx': 0.2,
-    'sdie': apbs_defaults['sdie'],
-    'pdie0': apbs_defaults['pdie'],
-    'pdie1': apbs_defaults['pdie'],
+    'sdie': apbs_defaults['apbs_sdie'],
+    'pdie0': apbs_defaults['apbs_pdie'],
+    'pdie1': apbs_defaults['apbs_pdie'],
     'debyel': 0.0,
     'ntrajo': 1,
     'ncopies': 200,
@@ -222,33 +222,33 @@ class BDPlugin(object):
         [self.fglen1[x].set(0.0) for x in range(3)]
 
         self.apbs_mode = Tkinter.StringVar()
-        self.apbs_mode.set(apbs_defaults['mode'])
-        self.bcfl = Tkinter.StringVar()
-        self.bcfl.set(apbs_defaults['bcfl'])
-        self.ion_charge = [Tkinter.IntVar() for _ in range(2)]
-        self.ion_conc = [Tkinter.DoubleVar() for _ in range(2)]
-        self.ion_rad = [Tkinter.DoubleVar() for _ in range(2)]
-        self.ion_charge[0].set(apbs_defaults['ion_charge'][0])
-        self.ion_charge[1].set(apbs_defaults['ion_charge'][1])
-        [self.ion_conc[x].set(apbs_defaults['ion_conc'][x]) for x in range(2)]
-        [self.ion_rad[x].set(apbs_defaults['ion_radius'][x]) for x in range(2)]
+        self.apbs_mode.set(apbs_defaults['apbs_mode'])
+        self.apbs_bcfl = Tkinter.StringVar()
+        self.apbs_bcfl.set(apbs_defaults['apbs_bcfl'])
+        self.apbs_ion_charge = [Tkinter.IntVar() for _ in range(2)]
+        self.apbs_ion_conc = [Tkinter.DoubleVar() for _ in range(2)]
+        self.apbs_ion_radius = [Tkinter.DoubleVar() for _ in range(2)]
+        self.apbs_ion_charge[0].set(apbs_defaults['apbs_ion_charge'][0])
+        self.apbs_ion_charge[1].set(apbs_defaults['apbs_ion_charge'][1])
+        [self.apbs_ion_conc[x].set(apbs_defaults['apbs_ion_conc'][x]) for x in range(2)]
+        [self.apbs_ion_radius[x].set(apbs_defaults['apbs_ion_radius'][x]) for x in range(2)]
 
-        self.interior_dielectric = Tkinter.DoubleVar()
-        self.interior_dielectric.set(apbs_defaults['pdie'])
-        self.solvent_dielectric = Tkinter.DoubleVar()
-        self.solvent_dielectric.set(apbs_defaults['sdie'])
-        self.chgm = Tkinter.StringVar()
-        self.chgm.set(apbs_defaults['chgm'])
-        self.sdens = Tkinter.DoubleVar()
-        self.sdens.set(apbs_defaults['sdens'])
-        self.swin = Tkinter.DoubleVar()
-        self.swin.set(apbs_defaults['swin'])
-        self.srfm = Tkinter.StringVar()
-        self.srfm.set(apbs_defaults['srfm'])
-        self.srad = Tkinter.DoubleVar()
-        self.srad.set(apbs_defaults['srad'])
-        self.system_temp = Tkinter.DoubleVar()
-        self.system_temp.set(apbs_defaults['temp'])
+        self.apbs_pdie = Tkinter.DoubleVar()
+        self.apbs_pdie.set(apbs_defaults['apbs_pdie'])
+        self.apbs_sdie = Tkinter.DoubleVar()
+        self.apbs_sdie.set(apbs_defaults['apbs_sdie'])
+        self.apbs_chgm = Tkinter.StringVar()
+        self.apbs_chgm.set(apbs_defaults['apbs_chgm'])
+        self.apbs_sdens = Tkinter.DoubleVar()
+        self.apbs_sdens.set(apbs_defaults['apbs_sdens'])
+        self.apbs_swin = Tkinter.DoubleVar()
+        self.apbs_swin.set(apbs_defaults['apbs_swin'])
+        self.apbs_srfm = Tkinter.StringVar()
+        self.apbs_srfm.set(apbs_defaults['apbs_srfm'])
+        self.apbs_srad = Tkinter.DoubleVar()
+        self.apbs_srad.set(apbs_defaults['apbs_srad'])
+        self.apbs_temp = Tkinter.DoubleVar()
+        self.apbs_temp.set(apbs_defaults['apbs_temp'])
 
         # reaction criteria
         self.contacts_f = Tkinter.StringVar()
@@ -262,9 +262,9 @@ class BDPlugin(object):
         
         # BD parameters and defaults
         self.solvent_eps = Tkinter.DoubleVar()
-        self.solvent_eps.set(self.solvent_dielectric.get())
+        self.solvent_eps.set(self.apbs_sdie.get())
         self.mol_eps = [Tkinter.DoubleVar() for _ in range(2)]
-        [self.mol_eps[x].set(self.interior_dielectric.get())  for x in range(2)]
+        [self.mol_eps[x].set(self.apbs_pdie.get())  for x in range(2)]
         self.debyel = [Tkinter.DoubleVar() for _ in range(2)]
         [self.debyel[x].set(bd_defaults['debyel']) for x in range(2)]
         self.ntraj = Tkinter.IntVar()
@@ -626,73 +626,73 @@ class BDPlugin(object):
         solvent_die_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                          label_text='Solvent eps :',
                                          validate={'validator': 'real', 'min': 0.0},
-                                         entry_textvariable=self.solvent_dielectric,
+                                         entry_textvariable=self.apbs_sdie,
                                          entry_width=10)
         solute_die_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                         label_text='Molecule 0/1 eps: ',
                                         validate={'validator': 'real', 'min': 0.0},
-                                        entry_textvariable=self.interior_dielectric,
+                                        entry_textvariable=self.apbs_pdie,
                                         entry_width=10)
         ion1_charge_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                          label_text='Ion(1) charge: ',
                                          validate={'validator': 'integer', 'min': -2},
-                                         entry_textvariable=self.ion_charge[0],
+                                         entry_textvariable=self.apbs_ion_charge[0],
                                          entry_width=5)
         ion1_conc_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                        label_text='conc.: ',
                                        validate={'validator': 'real', 'min': 0.0},
-                                       entry_textvariable=self.ion_conc[0],
+                                       entry_textvariable=self.apbs_ion_conc[0],
                                        entry_width=5)
         ion1_rad_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                       label_text='radius: ',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.ion_rad[0],
+                                      entry_textvariable=self.apbs_ion_radius[0],
                                       entry_width=5)
         ion2_charge_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                          label_text='Ion(2) charge: ',
                                          validate={'validator': 'integer', 'min': -2},
-                                         entry_textvariable=self.ion_charge[1],
+                                         entry_textvariable=self.apbs_ion_charge[1],
                                          entry_width=5)
         ion2_conc_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                        label_text='conc.: ',
                                        validate={'validator': 'real', 'min': 0.0},
-                                       entry_textvariable=self.ion_conc[1],
+                                       entry_textvariable=self.apbs_ion_conc[1],
                                        entry_width=5)
         ion2_rad_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                       label_text='radius: ',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.ion_rad[1],
+                                      entry_textvariable=self.apbs_ion_radius[1],
                                       entry_width=5)
 
         sdens_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                    label_text='Surf. sphere density: ',
                                    validate={'validator': 'real', 'min': 0.0},
-                                   entry_textvariable=self.sdens, entry_width=5)
+                                   entry_textvariable=self.apbs_sdens, entry_width=5)
         srad_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                   label_text='Solvent radius: ',
                                   validate={'validator': 'real', 'min': 0.0},
-                                  entry_textvariable=self.srad, entry_width=5)
+                                  entry_textvariable=self.apbs_srad, entry_width=5)
         swin_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                   label_text='Spline window: ',
                                   validate={'validator': 'real', 'min': 0.0},
-                                  entry_textvariable=self.swin, entry_width=5)
+                                  entry_textvariable=self.apbs_swin, entry_width=5)
         temp_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                   label_text='Temperature: ',
                                   validate={'validator': 'real', 'min': 0.0},
-                                  entry_textvariable=self.system_temp, entry_width=5)
+                                  entry_textvariable=self.apbs_temp, entry_width=5)
         bcfl_ent = Pmw.OptionMenu(grp_apbs, labelpos='w',
                                   label_text='Boundary condition: ',
-                                  menubutton_textvariable=self.bcfl,
+                                  menubutton_textvariable=self.apbs_bcfl,
                                   menubutton_width=5,
                                   items=['sdh', 'zero', 'mdh', 'focus'])
         chgm_ent = Pmw.OptionMenu(grp_apbs, labelpos='w',
                                   label_text='Charge mapping: ',
-                                  menubutton_textvariable=self.chgm,
+                                  menubutton_textvariable=self.apbs_chgm,
                                   menubutton_width=5,
                                   items=['spl2', 'spl0', 'spl4'])
         srfm_ent = Pmw.OptionMenu(grp_apbs, labelpos='w',
                                   label_text='Diel. surf. calc. method: ',
-                                  menubutton_textvariable=self.srfm,
+                                  menubutton_textvariable=self.apbs_srfm,
                                   menubutton_width=5,
                                   items=['smol', 'mol', 'spl2', 'spl4'])
 
@@ -1081,26 +1081,30 @@ class BDPlugin(object):
         self.projectDir.set(data['paths']['ProjectDir'])    
 
         pqr_config = data['pdb2pqr']
-        for name in pqr_defaults:
-            getattr(self, name).set(pqr_config[name])
+        for k in pqr_defaults:
+            getattr(self, k).set(pqr_config[k])
         psize_config = data['psize']
-        for name in psize_defaults:
-            getattr(self, name).set(psize_config[name])
+        for k in psize_defaults:
+            getattr(self, k).set(psize_config[k])
         apbs_config = data['apbs']
-        v = ['interior_dielectric', 'solvent_dielectric']
-        for name in v:
-            getattr(self, name).set(apbs_config[name])
+#        v = ['interior_dielectric', 'solvent_dielectric']
+        for k in apbs_defaults:
+            try:
+                getattr(self, k).set(apbs_config[k])
+            except AttributeError:
+                getattr(self, k)[0].set(apbs_config[k][0])
+                getattr(self, k)[1].set(apbs_config[k][1])
         bd_config = data["browndye"]
         v = ['contacts_f', 'default_contacts_f', 'ntraj', 'nthreads', 'mindx',
              'solvent_eps', 'mol_eps', 'debyel', 'ntrajo', 'ncopies', 'nbincopies',
              'nsteps', 'westeps',
              'maxnsteps', 'nsteps_per_output', 'rxn_distance', 'npairs']
-        for name in v:
+        for k in v:
             try:
-                getattr(self, name).set(bd_config[name])
+                getattr(self, k).set(bd_config[k])
             except AttributeError:
-                getattr(self, name)[0].set(bd_config[name][0])
-                getattr(self, name)[1].set(bd_config[name][1])
+                getattr(self, k)[0].set(bd_config[k][0])
+                getattr(self, k)[1].set(bd_config[k][1])
         return
 
     def saveConfig(self):
@@ -1114,27 +1118,30 @@ class BDPlugin(object):
             "ProjectDir": self.projectDir.get()
         }
         pqr_config = {}
-        for name in pqr_defaults:
-            pqr_config[name] = getattr(self, name).get()
+        for k in pqr_defaults:
+            pqr_config[k] = getattr(self, k).get()
         psize_config = {}
-        for name in psize_defaults:
-            psize_config[name] = getattr(self, name).get()
+        for k in psize_defaults:
+            psize_config[k] = getattr(self, k).get()
         apbs_config = {}
-        v = ['interior_dielectric', 'solvent_dielectric']
-        for name in v:
-            apbs_config[name] = getattr(self, name).get()
+        #v = ['interior_dielectric', 'solvent_dielectric']
+        for k in apbs_defaults:
+            try:
+                apbs_config[k] = getattr(self, k).get()
+            except AttributeError:
+                apbs_config[k] = [getattr(self, k)[0].get(),
+                                  getattr(self, k)[1].get()]
         bd_config = {}
         v = ['contacts_f', 'default_contacts_f', 'ntraj', 'nthreads', 'mindx',
              'solvent_eps', 'mol_eps', 'debyel', 'ntrajo', 'ncopies', 'nbincopies',
              'nsteps', 'westeps',
              'maxnsteps', 'nsteps_per_output', 'rxn_distance', 'npairs']
-        #bd_config['mol_eps'] = [self.mol_eps[0].get(), self.mol_eps[1].get()]
-        for name in v:
+        for k in v:
             try:
-                bd_config[name] = getattr(self, name).get()
+                bd_config[k] = getattr(self, k).get()
             except AttributeError:
-                bd_config[name] = [getattr(self, name)[0].get(),
-                                   getattr(self, name)[1].get()]
+                bd_config[k] = [getattr(self, k)[0].get(),
+                                getattr(self, k)[1].get()]
         bdtools_config ={
             "version": __version__,
             "date": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -1383,16 +1390,16 @@ quit
                           grid_points[0], grid_points[1], grid_points[2],
                           cglen[0], cglen[1], cglen[2],
                           fglen[0], fglen[1], fglen[2],
-                          self.apbs_mode.get(), self.bcfl.get(),
-                          self.ion_charge[0].get(),
-                          self.ion_conc[0].get(), self.ion_rad[0].get(),
-                          self.ion_charge[1].get(),
-                          self.ion_conc[1].get(), self.ion_rad[1].get(),
-                          self.interior_dielectric.get(),
-                          self.solvent_dielectric.get(),
-                          self.chgm.get(), self.sdens.get(),
-                          self.srfm.get(), self.srad.get(),
-                          self.swin.get(), self.system_temp.get(),
+                          self.apbs_mode.get(), self.apbs_bcfl.get(),
+                          self.apbs_ion_charge[0].get(),
+                          self.apbs_ion_conc[0].get(), self.apbs_ion_radius[0].get(),
+                          self.apbs_ion_charge[1].get(),
+                          self.apbs_ion_conc[1].get(), self.apbs_ion_radius[1].get(),
+                          self.apbs_pdie.get(),
+                          self.apbs_sdie.get(),
+                          self.apbs_chgm.get(), self.apbs_sdens.get(),
+                          self.apbs_srfm.get(), self.apbs_srad.get(),
+                          self.apbs_swin.get(), self.apbs_temp.get(),
                           dx_filename)))
 
             command = 'MCSH_HOME=. %s %s.in' % (apbs_exe, i)
