@@ -1,7 +1,9 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-13 10:09:28
+# Last modified: 2016-12-13 12:37:19
+#
+# pylint: disable=no-member,import-error,missing-docstring,invalid-name,multiple-statements
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -20,13 +22,17 @@ If not, see <http://www.gnu.org/licenses/>.
 '''
 
 from __future__ import print_function
-import os, subprocess
-import sys, string, re
+import os
+import subprocess
+import sys
+import string
+import re
 #import filecmp
 import json
 import shutil
 import random
-import time, datetime
+import time
+import datetime
 #import tkSimpleDialog
 #import tkMessageBox
 import Tkinter
@@ -52,19 +58,19 @@ PDB2PQR_EXE = 'pdb2pqr'
 BDTOP_EXE = 'bd_top'
 JOBPID = None
 
-pqr_defaults = {
+PQR_DEFAULTS = {
     'pqr_ff': 'parse',
     'pqr_opts': '--apbs-input --chain',
     'pqr_ph': 7.0,
     'pqr_assign_only': True,
     'pqr_use_propka': False,
 }
-psize_defaults = {
+PSIZE_DEFAULTS = {
     'cfac': 3.0,
     'fadd': 50.0,
     'gspace': 0.5,
 }
-apbs_defaults = {
+APBS_DEFAULTS = {
     'apbs_mode': 'lpbe',
     'apbs_pdie': 4.0,
     'apbs_sdie': 78.0,
@@ -79,14 +85,14 @@ apbs_defaults = {
     'apbs_ion_conc': [0.15, 0.15],
     'apbs_ion_radius': [1.0, 1.0],
 }
-bd_defaults = {
+BD_DEFAULTS = {
     'contacts_f': DEFAULT_CONTACTS_FILE,
     'default_contacts_f': True,
     'ntraj': 100,
     'nthreads': 1,
     'mindx': 0.2,
-    'sdie': apbs_defaults['apbs_sdie'],
-    'pdie': [apbs_defaults['apbs_pdie'], apbs_defaults['apbs_pdie']],
+    'sdie': APBS_DEFAULTS['apbs_sdie'],
+    'pdie': [APBS_DEFAULTS['apbs_pdie'], APBS_DEFAULTS['apbs_pdie']],
     'debyel': [0.0, 0.0],
     'ntrajo': 1,
     'ncopies': 200,
@@ -177,23 +183,23 @@ class BDPlugin(object):
         self.mol_object[0].set(None)
         self.mol_object[1].set(None)
         self.pqr_opts = Tkinter.StringVar()
-        self.pqr_opts.set(pqr_defaults['pqr_opts'])
+        self.pqr_opts.set(PQR_DEFAULTS['pqr_opts'])
         self.pqr_assign_only = Tkinter.BooleanVar()
-        self.pqr_assign_only.set(pqr_defaults['pqr_assign_only'])
+        self.pqr_assign_only.set(PQR_DEFAULTS['pqr_assign_only'])
         self.pqr_use_propka = Tkinter.BooleanVar()
-        self.pqr_use_propka.set(pqr_defaults['pqr_use_propka'])
+        self.pqr_use_propka.set(PQR_DEFAULTS['pqr_use_propka'])
         self.pqr_ph = Tkinter.DoubleVar()
-        self.pqr_ph.set(pqr_defaults['pqr_ph'])
+        self.pqr_ph.set(PQR_DEFAULTS['pqr_ph'])
         self.pqr_ff = Tkinter.StringVar()
-        self.pqr_ff.set(pqr_defaults['pqr_ff'])
+        self.pqr_ff.set(PQR_DEFAULTS['pqr_ff'])
 
         # psize/APBS parameters and defaults
         self.gspace = Tkinter.DoubleVar()
-        self.gspace.set(psize_defaults['gspace'])
+        self.gspace.set(PSIZE_DEFAULTS['gspace'])
         self.cfac = Tkinter.DoubleVar()
-        self.cfac.set(psize_defaults['cfac'])
+        self.cfac.set(PSIZE_DEFAULTS['cfac'])
         self.fadd = Tkinter.DoubleVar()
-        self.fadd.set(psize_defaults['fadd'])
+        self.fadd.set(PSIZE_DEFAULTS['fadd'])
         self.dime = [[Tkinter.IntVar() for _ in range(3)],
                      [Tkinter.IntVar() for _ in range(3)]]
         self.cglen = [[Tkinter.DoubleVar() for _ in range(3)],
@@ -201,70 +207,71 @@ class BDPlugin(object):
         self.fglen = [[Tkinter.DoubleVar() for _ in range(3)],
                       [Tkinter.DoubleVar() for _ in range(3)]]
         self.apbs_mode = Tkinter.StringVar()
-        self.apbs_mode.set(apbs_defaults['apbs_mode'])
+        self.apbs_mode.set(APBS_DEFAULTS['apbs_mode'])
         self.apbs_bcfl = Tkinter.StringVar()
-        self.apbs_bcfl.set(apbs_defaults['apbs_bcfl'])
+        self.apbs_bcfl.set(APBS_DEFAULTS['apbs_bcfl'])
         self.apbs_ion_charge = [Tkinter.IntVar() for _ in range(2)]
         self.apbs_ion_conc = [Tkinter.DoubleVar() for _ in range(2)]
         self.apbs_ion_radius = [Tkinter.DoubleVar() for _ in range(2)]
-        self.apbs_ion_charge[0].set(apbs_defaults['apbs_ion_charge'][0])
-        self.apbs_ion_charge[1].set(apbs_defaults['apbs_ion_charge'][1])
-        [self.apbs_ion_conc[x].set(apbs_defaults['apbs_ion_conc'][x]) for x in range(2)]
-        [self.apbs_ion_radius[x].set(apbs_defaults['apbs_ion_radius'][x]) for x in range(2)]
+        for i in range(2):
+            self.apbs_ion_charge[i].set(APBS_DEFAULTS['apbs_ion_charge'][i])
+            self.apbs_ion_conc[i].set(APBS_DEFAULTS['apbs_ion_conc'][i])
+            self.apbs_ion_radius[i].set(APBS_DEFAULTS['apbs_ion_radius'][i])
         self.apbs_pdie = Tkinter.DoubleVar()
-        self.apbs_pdie.set(apbs_defaults['apbs_pdie'])
+        self.apbs_pdie.set(APBS_DEFAULTS['apbs_pdie'])
         self.apbs_sdie = Tkinter.DoubleVar()
-        self.apbs_sdie.set(apbs_defaults['apbs_sdie'])
+        self.apbs_sdie.set(APBS_DEFAULTS['apbs_sdie'])
         self.apbs_chgm = Tkinter.StringVar()
-        self.apbs_chgm.set(apbs_defaults['apbs_chgm'])
+        self.apbs_chgm.set(APBS_DEFAULTS['apbs_chgm'])
         self.apbs_sdens = Tkinter.DoubleVar()
-        self.apbs_sdens.set(apbs_defaults['apbs_sdens'])
+        self.apbs_sdens.set(APBS_DEFAULTS['apbs_sdens'])
         self.apbs_swin = Tkinter.DoubleVar()
-        self.apbs_swin.set(apbs_defaults['apbs_swin'])
+        self.apbs_swin.set(APBS_DEFAULTS['apbs_swin'])
         self.apbs_srfm = Tkinter.StringVar()
-        self.apbs_srfm.set(apbs_defaults['apbs_srfm'])
+        self.apbs_srfm.set(APBS_DEFAULTS['apbs_srfm'])
         self.apbs_srad = Tkinter.DoubleVar()
-        self.apbs_srad.set(apbs_defaults['apbs_srad'])
+        self.apbs_srad.set(APBS_DEFAULTS['apbs_srad'])
         self.apbs_temp = Tkinter.DoubleVar()
-        self.apbs_temp.set(apbs_defaults['apbs_temp'])
+        self.apbs_temp.set(APBS_DEFAULTS['apbs_temp'])
 
         # reaction criteria
         self.contacts_f = Tkinter.StringVar()
-        self.contacts_f.set(bd_defaults['contacts_f'])
+        self.contacts_f.set(BD_DEFAULTS['contacts_f'])
         self.default_contacts_f = Tkinter.BooleanVar()
-        self.default_contacts_f.set(bd_defaults['default_contacts_f'])
+        self.default_contacts_f.set(BD_DEFAULTS['default_contacts_f'])
         self.rxn_distance = Tkinter.DoubleVar()
-        self.rxn_distance.set(bd_defaults['rxn_distance'])
+        self.rxn_distance.set(BD_DEFAULTS['rxn_distance'])
         self.npairs = Tkinter.IntVar()
-        self.npairs.set(bd_defaults['npairs'])
+        self.npairs.set(BD_DEFAULTS['npairs'])
 
         # BD parameters and defaults
         self.sdie = Tkinter.DoubleVar()
         self.sdie.set(self.apbs_sdie.get())
         self.pdie = [Tkinter.DoubleVar() for _ in range(2)]
-        [self.pdie[x].set(self.apbs_pdie.get())  for x in range(2)]
         self.debyel = [Tkinter.DoubleVar() for _ in range(2)]
-        [self.debyel[x].set(bd_defaults['debyel'][x]) for x in range(2)]
+        for i in range(2):
+            self.pdie[i].set(self.apbs_pdie.get())
+            self.debyel[i].set(BD_DEFAULTS['debyel'][i])
         self.ntraj = Tkinter.IntVar()
-        self.ntraj.set(bd_defaults['ntraj'])
+        self.ntraj.set(BD_DEFAULTS['ntraj'])
         self.nthreads = Tkinter.IntVar()
-        self.nthreads.set(bd_defaults['nthreads'])
+        self.nthreads.set(BD_DEFAULTS['nthreads'])
         self.mindx = Tkinter.DoubleVar()
-        self.mindx.set(bd_defaults['mindx'])
+        self.mindx.set(BD_DEFAULTS['mindx'])
         self.ntrajo = Tkinter.IntVar()
-        self.ntrajo.set(bd_defaults['ntrajo'])
+        self.ntrajo.set(BD_DEFAULTS['ntrajo'])
         self.ncopies = Tkinter.IntVar()
-        self.ncopies.set(bd_defaults['ncopies'])
+        self.ncopies.set(BD_DEFAULTS['ncopies'])
         self.nbincopies = Tkinter.IntVar()
-        self.nbincopies.set(bd_defaults['nbincopies'])
+        self.nbincopies.set(BD_DEFAULTS['nbincopies'])
         self.nsteps = Tkinter.IntVar()
-        self.nsteps.set(bd_defaults['nsteps'])
+        self.nsteps.set(BD_DEFAULTS['nsteps'])
         self.westeps = Tkinter.IntVar()
-        self.westeps.set(bd_defaults['westeps'])
+        self.westeps.set(BD_DEFAULTS['westeps'])
         self.maxnsteps = Tkinter.IntVar()
-        self.maxnsteps.set(bd_defaults['maxnsteps'])
+        self.maxnsteps.set(BD_DEFAULTS['maxnsteps'])
         self.nsteps_per_output = Tkinter.IntVar()
-        self.nsteps_per_output.set(bd_defaults['nsteps_per_output'])
+        self.nsteps_per_output.set(BD_DEFAULTS['nsteps_per_output'])
 
         self.run_in_background = Tkinter.BooleanVar()
         self.run_in_background.set(False)
@@ -784,7 +791,8 @@ class BDPlugin(object):
         nbincopies_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
                                         label_text='Number of bin copies: ',
                                         validate={'validator': 'integer', 'min': 1},
-                                        entry_textvariable=self.nbincopies, entry_width=5)
+                                        entry_textvariable=self.nbincopies,
+                                        entry_width=5)
         nsteps_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
                                     label_text='Number of steps: ',
                                     validate={'validator': 'integer', 'min': 1},
@@ -1055,20 +1063,20 @@ class BDPlugin(object):
         self.projectDir.set(data['paths']['ProjectDir'])
 
         pqr_config = data['pdb2pqr']
-        for k in pqr_defaults:
+        for k in PQR_DEFAULTS:
             getattr(self, k).set(pqr_config[k])
         psize_config = data['psize']
-        for k in psize_defaults:
+        for k in PSIZE_DEFAULTS:
             getattr(self, k).set(psize_config[k])
         apbs_config = data['apbs']
-        for k in apbs_defaults:
+        for k in APBS_DEFAULTS:
             try:
                 getattr(self, k).set(apbs_config[k])
             except AttributeError:
                 getattr(self, k)[0].set(apbs_config[k][0])
                 getattr(self, k)[1].set(apbs_config[k][1])
         bd_config = data["browndye"]
-        for k in bd_defaults:
+        for k in BD_DEFAULTS:
             try:
                 getattr(self, k).set(bd_config[k])
             except AttributeError:
@@ -1087,20 +1095,20 @@ class BDPlugin(object):
             "ProjectDir": self.projectDir.get()
         }
         pqr_config = {}
-        for k in pqr_defaults:
+        for k in PQR_DEFAULTS:
             pqr_config[k] = getattr(self, k).get()
         psize_config = {}
-        for k in psize_defaults:
+        for k in PSIZE_DEFAULTS:
             psize_config[k] = getattr(self, k).get()
         apbs_config = {}
-        for k in apbs_defaults:
+        for k in APBS_DEFAULTS:
             try:
                 apbs_config[k] = getattr(self, k).get()
             except AttributeError:
                 apbs_config[k] = [getattr(self, k)[0].get(),
                                   getattr(self, k)[1].get()]
         bd_config = {}
-        for k in bd_defaults:
+        for k in BD_DEFAULTS:
             try:
                 bd_config[k] = getattr(self, k).get()
             except AttributeError:
@@ -1187,9 +1195,10 @@ class BDPlugin(object):
         grid_points = psize.getFineGridPoints()
         cglen = psize.getCoarseGridDims()
         fglen = psize.getFineGridDims()
-        [self.dime[n][x].set(grid_points[x]) for x in range(3)]
-        [self.cglen[n][x].set(cglen[x]) for x in range(3)]
-        [self.fglen[n][x].set(fglen[x]) for x in range(3)]
+        for i in range(3):
+            self.dime[n][i].set(grid_points[i])
+            self.cglen[n][i].set(cglen[i])
+            self.fglen[n][i].set(fglen[i])
         return
 
     def getContacts(self):
@@ -1253,7 +1262,8 @@ class BDPlugin(object):
 
     def runAPBS(self):
         """Run APBS calculations on molecule 0 and molecule 1"""
-        apbs_template = """# APBS template for BrownDye grids
+        apbs_template = """
+# APBS template for BrownDye grids
 read
     mol pqr %s
 end
@@ -1535,10 +1545,10 @@ quit
       <contact>
         <atom> NE1 </atom> <residue> TRP </residue>
       </contact>
-      <contact> <atom> N </atom> <residue> ALA </residue> </contact>   
-      <contact> <atom> N </atom> <residue> ARG </residue> </contact> 
-      <contact> <atom> N </atom> <residue> ASN </residue> </contact>  
-      <contact> <atom> N </atom> <residue> ASP </residue> </contact> 
+      <contact> <atom> N </atom> <residue> ALA </residue> </contact>
+      <contact> <atom> N </atom> <residue> ARG </residue> </contact>
+      <contact> <atom> N </atom> <residue> ASN </residue> </contact>
+      <contact> <atom> N </atom> <residue> ASP </residue> </contact>
       <contact> <atom> N </atom> <residue> CYS </residue> </contact>
       <contact> <atom> N </atom> <residue> GLU </residue> </contact>
       <contact> <atom> N </atom> <residue> GLN </residue> </contact>
@@ -1593,10 +1603,10 @@ quit
       <contact>
         <atom> OH </atom> <residue> TYR </residue>
       </contact>
-      <contact> <atom> O </atom> <residue> ALA </residue> </contact>   
-      <contact> <atom> O </atom> <residue> ARG </residue> </contact> 
-      <contact> <atom> O </atom> <residue> ASN </residue> </contact>  
-      <contact> <atom> O </atom> <residue> ASP </residue> </contact> 
+      <contact> <atom> O </atom> <residue> ALA </residue> </contact>
+      <contact> <atom> O </atom> <residue> ARG </residue> </contact>
+      <contact> <atom> O </atom> <residue> ASN </residue> </contact>
+      <contact> <atom> O </atom> <residue> ASP </residue> </contact>
       <contact> <atom> O </atom> <residue> CYS </residue> </contact>
       <contact> <atom> O </atom> <residue> GLU </residue> </contact>
       <contact> <atom> O </atom> <residue> GLN </residue> </contact>
@@ -1645,7 +1655,7 @@ quit
             print("::: Failed: %s" % command)
         command = ('%s/make_rxn_file '
                    '-pairs %s-%s-rxn-pairs.xml -distance %f '
-                   ' -nneeded %d > %s-%s-rxns.xml'
+                   '-nneeded %d > %s-%s-rxns.xml'
                    % (self.bd_path.get(), MOL[0], MOL[1],
                       self.rxn_distance.get(),
                       self.npairs.get(), MOL[0], MOL[1]))
@@ -1753,7 +1763,8 @@ quit
             global JOBPID
             JOBPID = p.pid
             self.notebook.selectpage('BD simulation')
-            self.logtxt_ent.insert('end', "::: Starting BrownDye simulation in background.\n")
+            self.logtxt_ent.insert(
+                'end', "::: Starting BrownDye simulation in background.\n")
             self.logtxt_ent.insert('end', "::: Job PID: %d \n" % JOBPID)
         else:
             thread = RunThread(self, command)
@@ -1776,7 +1787,7 @@ quit
             s = subprocess.Popen(command, shell=True,
                                  stdout=subprocess.PIPE).stdout.read()
             if DEBUG > 1: print(command, s)
-            print("::: Background job (PID %d) terminated." % JOPBPID)
+            print("::: Background job (PID %d) terminated." % JOBPID)
         except AttributeError:
             print("::: No background job running!")
         return
@@ -1829,8 +1840,9 @@ quit
         t = etree.fromstring(stdout)
         tr = t.xpath('//trajectory/number')
         traj_index = [int(tr[x].text.strip()) for x in range(len(tr))]
-        logline = ('%d association event trajectories found (index numbers: %s)\n'
-                   % (len(traj_index), str(traj_index)))
+        logline = (
+            '%d association event trajectories found (index numbers: %s)\n'
+            % (len(traj_index), str(traj_index)))
         self.msg_ent.insert('end', "%s" % logline)
         # number of frames
         self.dialog_idx.clear()
@@ -1925,6 +1937,7 @@ quit
             self.dialog.withdraw()
         print("Done.")
         return
+
 
 class RunBDTopThread(Thread):
     """bd_top thread management class."""
@@ -2067,7 +2080,7 @@ class Psize(object):
                           "REDFAC": 0.25, "TFAC_ALPHA": 9e-5,
                           "TFAC_XEON": 3e-4, "TFAC_SPARC": 5e-4}
 
-        self.constants['CFAC'] = psize_defaults['cfac']
+        self.constants['CFAC'] = PSIZE_DEFAULTS['cfac']
         self.constants['FADD'] = bd_instance.fadd.get()
         self.constants['SPACE'] = bd_instance.gspace.get()
         self.minlen = [360.0, 360.0, 360.0]
