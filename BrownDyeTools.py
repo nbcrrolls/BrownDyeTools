@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-13 08:43:38
+# Last modified: 2016-12-13 10:09:28
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -21,18 +21,20 @@ If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import print_function
 import os, subprocess
-import sys, string, filecmp, shutil, re
+import sys, string, re
+#import filecmp
+import json
+import shutil
 import random
 import time, datetime
 #import tkSimpleDialog
-import tkMessageBox
-import tkFileDialog
+#import tkMessageBox
 import Tkinter
 import Pmw
+import tkFileDialog
 from threading import Thread
 from lxml import etree
-import importlib
-import json
+#import importlib
 
 DEBUG = 0
 
@@ -145,7 +147,7 @@ class BDPlugin(object):
         Tkinter.Grid.rowconfigure(self.parent, 0, weight=1)
         Tkinter.Grid.columnconfigure(self.parent, 0, weight=1)
         self.createGUI()
-        
+
     def createGUI(self):
         """The main GUI class - sets up all GUI elements."""
         self.dialog = Pmw.Dialog(self.parent, buttons=('Exit',),
@@ -163,7 +165,7 @@ class BDPlugin(object):
         self.bd_path.set(BD_PATH)
         self.config_file = Tkinter.StringVar()
         self.config_file.set(CONFIG_FILE)
-        
+
         # parameters used by pdb2pqr
         self.mol = [Tkinter.StringVar(), Tkinter.StringVar()]
         self.mol[0].set(None)
@@ -235,7 +237,7 @@ class BDPlugin(object):
         self.rxn_distance.set(bd_defaults['rxn_distance'])
         self.npairs = Tkinter.IntVar()
         self.npairs.set(bd_defaults['npairs'])
-        
+
         # BD parameters and defaults
         self.sdie = Tkinter.DoubleVar()
         self.sdie.set(self.apbs_sdie.get())
@@ -266,7 +268,7 @@ class BDPlugin(object):
 
         self.run_in_background = Tkinter.BooleanVar()
         self.run_in_background.set(False)
-        
+
         # Analysis
         self.traj_f = Tkinter.StringVar()
         self.traj_f.set('traj0.xml')
@@ -292,7 +294,7 @@ class BDPlugin(object):
         #####################
         # Tab: Configuration
         #####################
-        page = self.notebook.add('Configuration')       
+        page = self.notebook.add('Configuration')
         self.notebook.tab('Configuration').focus_set()
         config = Tkinter.LabelFrame(page, text='Calculation configuration')
         config.pack(fill='both', expand=True, **pref)
@@ -335,23 +337,23 @@ class BDPlugin(object):
                                          command=self.loadConfig)
         save_config_but = Tkinter.Button(config, text='Save configuration',
                                          command=self.saveConfig)
-        
+
         # arrange widgets using grid
         project_path_ent.grid(sticky='we', row=1, column=0, **pref)
         project_path_but.grid(sticky='we', row=1, column=1, **pref)
-        label.grid(           sticky='we', row=1, column=2, **pref)
+        label.grid(sticky='we', row=1, column=2, **pref)
         project_path_b_but.grid(sticky='we', row=1, column=3, **pref)
         pdb2pqr_path_ent.grid(sticky='we', row=2, column=0, **pref)
         pdb2pqr_path_but.grid(sticky='we', row=2, column=1, **pref)
-        apbs_path_ent.grid(   sticky='we', row=3, column=0, **pref)
-        apbs_path_but.grid(   sticky='we', row=3, column=1, **pref)
-        bd_path_ent.grid(     sticky='we', row=4, column=0, **pref)
-        bd_path_but.grid(     sticky='we', row=4, column=1, **pref)
-        label1.grid(          sticky='we', row=5, column=2, **pref)
-        config_ent.grid(      sticky='we', row=6, column=0, **pref)
-        config_but.grid(      sticky='we', row=6, column=1, **pref)
-        load_config_but.grid( sticky='e', row=6, column=2, **pref)
-        save_config_but.grid( sticky='w', row=6, column=3, **pref)
+        apbs_path_ent.grid(sticky='we', row=3, column=0, **pref)
+        apbs_path_but.grid(sticky='we', row=3, column=1, **pref)
+        bd_path_ent.grid(sticky='we', row=4, column=0, **pref)
+        bd_path_but.grid(sticky='we', row=4, column=1, **pref)
+        label1.grid(sticky='we', row=5, column=2, **pref)
+        config_ent.grid(sticky='we', row=6, column=0, **pref)
+        config_but.grid(sticky='we', row=6, column=1, **pref)
+        load_config_but.grid(sticky='e', row=6, column=2, **pref)
+        save_config_but.grid(sticky='w', row=6, column=3, **pref)
         config.columnconfigure(0, weight=8)
         config.columnconfigure(1, weight=2)
 
@@ -363,10 +365,10 @@ class BDPlugin(object):
         grp_pqr.grid(sticky='eswn', row=0, column=0, columnspan=3, **pref)
 
         pdb0_ent = Pmw.EntryField(grp_pqr,
-                                   label_text='Molecule 0 PDB file:', labelpos='wn',
-                                   entry_textvariable=self.mol[0])
+                                  label_text='Molecule 0 PDB file:', labelpos='wn',
+                                  entry_textvariable=self.mol[0])
         pdb0_but = Tkinter.Button(grp_pqr, text='Browse...',
-                                   command=lambda: self.getPDBMol(0))
+                                  command=lambda: self.getPDBMol(0))
         label0 = Tkinter.Label(grp_pqr, text='or')
         pymol_obj0_opt = Pmw.OptionMenu(grp_pqr, labelpos='w',
                                         label_text='Select molecule 0: ',
@@ -374,10 +376,10 @@ class BDPlugin(object):
                                         menubutton_width=7,
                                         items=(['None'] + pymol.cmd.get_names("all")))
         pdb1_ent = Pmw.EntryField(grp_pqr,
-                                   label_text='Molecule 1 PDB file:', labelpos='wn',
-                                   entry_textvariable=self.mol[1])
+                                  label_text='Molecule 1 PDB file:', labelpos='wn',
+                                  entry_textvariable=self.mol[1])
         pdb1_but = Tkinter.Button(grp_pqr, text='Browse...',
-                                   command=lambda: self.getPDBMol(1))
+                                  command=lambda: self.getPDBMol(1))
         label1 = Tkinter.Label(grp_pqr, text='or')
         pymol_obj1_opt = Pmw.OptionMenu(grp_pqr, labelpos='w',
                                         label_text='Select molecule 1: ',
@@ -419,24 +421,24 @@ class BDPlugin(object):
         pqr_1_but = Tkinter.Button(page, text='Browse...',
                                    command=lambda: self.getPQRMol(1))
 
-        pdb0_ent.grid(     sticky='we', row=0, column=0, **pref)
-        pdb0_but.grid(     sticky='we', row=0, column=1, **pref)
-        label0.grid(        sticky='we', row=0, column=2, **pref)
+        pdb0_ent.grid(sticky='we', row=0, column=0, **pref)
+        pdb0_but.grid(sticky='we', row=0, column=1, **pref)
+        label0.grid(sticky='we', row=0, column=2, **pref)
         pymol_obj0_opt.grid(sticky='we', row=0, column=3, **pref)
-        pdb1_ent.grid(     sticky='we', row=1, column=0, **pref)
-        pdb1_but.grid(     sticky='we', row=1, column=1, **pref)
-        label1.grid(        sticky='we', row=1, column=2, **pref)
+        pdb1_ent.grid(sticky='we', row=1, column=0, **pref)
+        pdb1_but.grid(sticky='we', row=1, column=1, **pref)
+        label1.grid(sticky='we', row=1, column=2, **pref)
         pymol_obj1_opt.grid(sticky='we', row=1, column=3, **pref)
-        pqr_ff_opt.grid(    sticky='we', row=2, column=0, **pref)
-        pqr_an_but.grid(    sticky='we', row=3, column=0, **pref)
-        propka_but.grid(    sticky='we', row=3, column=1, columnspan=2, **pref)
-        ph_ent.grid(        sticky='we', row=3, column=3, **pref)
-        pqr_opt_but.grid(   sticky='we', row=4, column=0, **pref)
-        label2.grid(        sticky='we', row=5, column=0, **pref)
-        pqr_0_ent.grid(     sticky='we', row=6, column=0, **pref)
-        pqr_0_but.grid(     sticky='we', row=6, column=1, **pref)
-        pqr_1_ent.grid(     sticky='we', row=7, column=0, **pref)
-        pqr_1_but.grid(     sticky='we', row=7, column=1, **pref)
+        pqr_ff_opt.grid(sticky='we', row=2, column=0, **pref)
+        pqr_an_but.grid(sticky='we', row=3, column=0, **pref)
+        propka_but.grid(sticky='we', row=3, column=1, columnspan=2, **pref)
+        ph_ent.grid(sticky='we', row=3, column=3, **pref)
+        pqr_opt_but.grid(sticky='we', row=4, column=0, **pref)
+        label2.grid(sticky='we', row=5, column=0, **pref)
+        pqr_0_ent.grid(sticky='we', row=6, column=0, **pref)
+        pqr_0_but.grid(sticky='we', row=6, column=1, **pref)
+        pqr_1_ent.grid(sticky='we', row=7, column=0, **pref)
+        pqr_1_but.grid(sticky='we', row=7, column=1, **pref)
         page.columnconfigure(0, weight=1)
         page.columnconfigure(1, weight=1)
 
@@ -591,7 +593,7 @@ class BDPlugin(object):
 
         #grp_grids.columnconfigure(0, weight=9)
         #grp_grids.columnconfigure(1, weight=1)
-        
+
         apbs_mode_ent = Pmw.OptionMenu(grp_apbs, labelpos='w',
                                        label_text='APBS mode: ',
                                        menubutton_textvariable=self.apbs_mode,
@@ -673,23 +675,23 @@ class BDPlugin(object):
                                       command=self.runAPBS)
 
         solvent_die_ent.grid(sticky='we', row=0, column=0, **pref)
-        solute_die_ent.grid( sticky='we', row=1, column=0, **pref)
-        sdens_ent.grid(      sticky='we', row=2, column=0, **pref)
-        srad_ent.grid(       sticky='we', row=3, column=0, **pref)
-        swin_ent.grid(       sticky='we', row=4, column=0, **pref)
-        temp_ent.grid(       sticky='we', row=5, column=0, **pref)
+        solute_die_ent.grid(sticky='we', row=1, column=0, **pref)
+        sdens_ent.grid(sticky='we', row=2, column=0, **pref)
+        srad_ent.grid(sticky='we', row=3, column=0, **pref)
+        swin_ent.grid(sticky='we', row=4, column=0, **pref)
+        temp_ent.grid(sticky='we', row=5, column=0, **pref)
 
         ion1_charge_ent.grid(sticky='we', row=6, column=0, **pref)
-        ion1_conc_ent.grid(  sticky='we', row=6, column=1, **pref)
-        ion1_rad_ent.grid(   sticky='we', row=6, column=2, **pref)
+        ion1_conc_ent.grid(sticky='we', row=6, column=1, **pref)
+        ion1_rad_ent.grid(sticky='we', row=6, column=2, **pref)
         ion2_charge_ent.grid(sticky='we', row=7, column=0, **pref)
-        ion2_conc_ent.grid(  sticky='we', row=7, column=1, **pref)
-        ion2_rad_ent.grid(   sticky='we', row=7, column=2, **pref)
+        ion2_conc_ent.grid(sticky='we', row=7, column=1, **pref)
+        ion2_rad_ent.grid(sticky='we', row=7, column=2, **pref)
 
         apbs_mode_ent.grid(sticky='we', row=0, column=1, columnspan=2, **pref)
-        bcfl_ent.grid(     sticky='we', row=1, column=1, columnspan=2, **pref)
-        chgm_ent.grid(     sticky='we', row=2, column=1, columnspan=2, **pref)
-        srfm_ent.grid(     sticky='we', row=3, column=1, columnspan=2, **pref)
+        bcfl_ent.grid(sticky='we', row=1, column=1, columnspan=2, **pref)
+        chgm_ent.grid(sticky='we', row=2, column=1, columnspan=2, **pref)
+        srfm_ent.grid(sticky='we', row=3, column=1, columnspan=2, **pref)
 
         run_apbs_but.grid(sticky='e', row=8, column=4, **pref)
         page.columnconfigure(0, weight=1)
@@ -725,15 +727,15 @@ class BDPlugin(object):
         run_rxn_crit = Tkinter.Button(page, text="Create reaction files",
                                       command=self.runRxnCrit)
 
-        contacts_ent.grid(    sticky='we', row=0, column=0, **pref)
-        contacts_but.grid(    sticky='e',  row=0, column=1, **pref)
-        def_contacts_but.grid(sticky='e',  row=0, column=2, **pref)
+        contacts_ent.grid(sticky='we', row=0, column=0, **pref)
+        contacts_but.grid(sticky='e', row=0, column=1, **pref)
+        def_contacts_but.grid(sticky='e', row=0, column=2, **pref)
         rxn_distance_ent.grid(sticky='we', row=1, column=0, **pref)
-        npairs_ent.grid(      sticky='we', row=2, column=0, **pref)
-        run_rxn_crit.grid(    sticky='e', row=3, column=0, **pref)
+        npairs_ent.grid(sticky='we', row=2, column=0, **pref)
+        run_rxn_crit.grid(sticky='e', row=3, column=0, **pref)
         grp_rxn.columnconfigure(0, weight=1)
         page.columnconfigure(0, weight=1)
-        
+
         ######################
         # Tab: BD input files
         ######################
@@ -808,22 +810,22 @@ class BDPlugin(object):
         self.status_bar.message('state', '')
 
         sdie_ent.grid(sticky='we', row=1, column=0, **pref)
-        debyel_ent.grid(     sticky='we', row=2, column=0, **pref)
-        get_debyel_but.grid( sticky='w',  row=2, column=1, **pref)
-        pdie0_ent.grid(   sticky='we', row=3, column=0, **pref)
-        pdie1_ent.grid(   sticky='we', row=3, column=1, **pref)
+        debyel_ent.grid(sticky='we', row=2, column=0, **pref)
+        get_debyel_but.grid(sticky='w', row=2, column=1, **pref)
+        pdie0_ent.grid(sticky='we', row=3, column=0, **pref)
+        pdie1_ent.grid(sticky='we', row=3, column=1, **pref)
 
-        ntraj_ent.grid(      sticky='we', row=4, column=0, **pref)
-        nthreads_ent.grid(   sticky='we', row=4, column=1, **pref)
-        mindx_ent.grid(      sticky='we', row=5, column=0, **pref)
-        ntrajo_ent.grid(     sticky='we', row=5, column=1, **pref)
-        ncopies_ent.grid(    sticky='we', row=6, column=0, **pref)
-        nbincopies_ent.grid( sticky='we', row=6, column=1, **pref)
-        nsteps_ent.grid(     sticky='we', row=7, column=0, **pref)
-        westeps_ent.grid(    sticky='we', row=7, column=1, **pref)
-        maxnsteps_ent.grid(  sticky='we', row=8, column=0, **pref)
-        nsteps_per_output_ent.grid(  sticky='we', row=8, column=1, **pref)
-        prep_bd_but.grid(    sticky='e', row=9, column=0, **pref)
+        ntraj_ent.grid(sticky='we', row=4, column=0, **pref)
+        nthreads_ent.grid(sticky='we', row=4, column=1, **pref)
+        mindx_ent.grid(sticky='we', row=5, column=0, **pref)
+        ntrajo_ent.grid(sticky='we', row=5, column=1, **pref)
+        ncopies_ent.grid(sticky='we', row=6, column=0, **pref)
+        nbincopies_ent.grid(sticky='we', row=6, column=1, **pref)
+        nsteps_ent.grid(sticky='we', row=7, column=0, **pref)
+        westeps_ent.grid(sticky='we', row=7, column=1, **pref)
+        maxnsteps_ent.grid(sticky='we', row=8, column=0, **pref)
+        nsteps_per_output_ent.grid(sticky='we', row=8, column=1, **pref)
+        prep_bd_but.grid(sticky='e', row=9, column=0, **pref)
         self.status_bar.grid(sticky='e', row=10, column=0, **pref)
         grp_bdinput.columnconfigure(0, weight=1)
         grp_bdinput.columnconfigure(1, weight=1)
@@ -837,7 +839,7 @@ class BDPlugin(object):
         grp_sim.grid(sticky='eswn', row=0, column=0, columnspan=2, **pref)
 
         bkgj_cb = Tkinter.Checkbutton(grp_sim,
-                                      text='Run job in background', 
+                                      text='Run job in background',
                                       variable=self.run_in_background,
                                       onvalue=True, offvalue=False)
         run_bd_but = Tkinter.Button(grp_sim,
@@ -894,7 +896,7 @@ class BDPlugin(object):
         load_traj_but = Tkinter.Button(grp_analysis, text='Browse...',
                                        command=self.loadTrajectoryFile)
         analyze_but = Tkinter.Button(grp_analysis, text='Analyze',
-                                       command=self.analyzeTrajectoryFile)
+                                     command=self.analyzeTrajectoryFile)
         self.msg_ent = Pmw.ScrolledText(grp_analysis, labelpos='wn',
                                         borderframe=5,
                                         vscrollmode='dynamic',
@@ -935,7 +937,7 @@ class BDPlugin(object):
         load_xyztraj_but.grid(sticky='we', row=5, column=0, **pref)
         grp_analysis.columnconfigure(0, weight=1)
         page.columnconfigure(0, weight=1)
-        
+
         #############
         # Tab: About
         #############
@@ -966,11 +968,11 @@ class BDPlugin(object):
 
     def getProjectDir(self):
         """Generate a random project directory name."""
-        rndID = random.randint(10000, 99999)
+        rnd_id = random.randint(10000, 99999)
         cwd = os.getcwd()
-        pDir = '%s/bd-project-%d' % (cwd, rndID)
-        return pDir
-    
+        p_dir = '%s/bd-project-%d' % (cwd, rnd_id)
+        return p_dir
+
     def browseProjectDir(self):
         """Browse for project directory and chdir there."""
         d = tkFileDialog.askdirectory(
@@ -1003,11 +1005,11 @@ class BDPlugin(object):
         if DEBUG > 2: print("stdout:\n%s\n" % stdout)
         if DEBUG > 2: print("stderr:\n%s\n" % stderr)
         if p.returncode > 0:
-            sys.stderr.write("::: Non-zero return code!\n") 
+            sys.stderr.write("::: Non-zero return code!\n")
             sys.stderr.write("::: Failed command: \n\n")
             sys.stderr.write("%s \n\n" % command)
             sys.stderr.write(stderr)
-        return(p.returncode)
+        return p.returncode
 
     def getPDB2PQRpath(self):
         """Get PDB2PQR binary path."""
@@ -1016,7 +1018,7 @@ class BDPlugin(object):
                                       parent=self.parent)
         self.pdb2pqr_path.set(d)
         return
-        
+
     def getAPBSpath(self):
         """Get APBS binary path."""
         d = tkFileDialog.askdirectory(title='APBS binary directory',
@@ -1024,7 +1026,7 @@ class BDPlugin(object):
                                       parent=self.parent)
         self.apbs_path.set(d)
         return
-        
+
     def getBDpath(self):
         """Get BrownDye binary path."""
         d = tkFileDialog.askdirectory(title='BrownDye binary directory',
@@ -1040,17 +1042,17 @@ class BDPlugin(object):
                                          parent=self.parent)
         self.config_file.set(f)
         return
-    
+
     def loadConfig(self):
         """Load configuration from a file, update all affected variables."""
         configf = self.config_file.get()
-        with open(configf) as f:    
+        with open(configf) as f:
             data = json.load(f)
 
         self.pdb2pqr_path.set(data['paths']['PDB2PQR_PATH'])
         self.apbs_path.set(data['paths']['APBS_PATH'])
         self.bd_path.set(data['paths']['BD_PATH'])
-        self.projectDir.set(data['paths']['ProjectDir'])    
+        self.projectDir.set(data['paths']['ProjectDir'])
 
         pqr_config = data['pdb2pqr']
         for k in pqr_defaults:
@@ -1104,7 +1106,7 @@ class BDPlugin(object):
             except AttributeError:
                 bd_config[k] = [getattr(self, k)[0].get(),
                                 getattr(self, k)[1].get()]
-        bdtools_config ={
+        bdtools_config = {
             "version": __version__,
             "date": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         }
@@ -1128,7 +1130,7 @@ class BDPlugin(object):
                                              parent=self.parent)
         self.mol[n].set(fname)
         return
-        
+
     def selectMol0(self, result):
         sel = self.dialog0.getcurselection()
         if len(sel) > 0: print("::: Selection: %s" % sel)
@@ -1148,7 +1150,7 @@ class BDPlugin(object):
             self.dialog0.insert('end', i)
         self.dialog0.activate()
         return
-    
+
     def dialog1Call(self):
         """Populate the selection list with pymol objects."""
         self.dialog1.delete(0, 'end')
@@ -1336,7 +1338,7 @@ quit
             fname = '%s-io.mc' % MOL[i]
             if DEBUG > 2: print("Parsing %s for Debye length ..." % fname)
             if not os.path.isfile(fname):
-                print("::: File %s does not exist!" % fname )
+                print("::: File %s does not exist!" % fname)
                 print("::: You need to run APBS first.")
                 return
             with open(fname) as f:
@@ -1641,12 +1643,12 @@ quit
             print("::: Done.")
         else:
             print("::: Failed: %s" % command)
-        command =('%s/make_rxn_file '
-                  '-pairs %s-%s-rxn-pairs.xml -distance %f '
-                  ' -nneeded %d > %s-%s-rxns.xml'
-                  % (self.bd_path.get(), MOL[0], MOL[1],
-                     self.rxn_distance.get(),
-                     self.npairs.get(), MOL[0], MOL[1]))
+        command = ('%s/make_rxn_file '
+                   '-pairs %s-%s-rxn-pairs.xml -distance %f '
+                   ' -nneeded %d > %s-%s-rxns.xml'
+                   % (self.bd_path.get(), MOL[0], MOL[1],
+                      self.rxn_distance.get(),
+                      self.npairs.get(), MOL[0], MOL[1]))
         if DEBUG > 2: print(command)
         print("::: Running make_rxn_file ...")
         rc = self.runCmd(command)
@@ -1655,7 +1657,7 @@ quit
         else:
             print("::: Failed: %s" % command)
         return
-            
+
     def prepBD(self):
         """Create BrownDye input file and run bd_top."""
         nam_simulation_template = """
@@ -1738,7 +1740,7 @@ quit
         self.runPqr2xml()
         self.makeRxnCriteria()
         return
-    
+
     def runBD(self):
         """Start BrownDye simulation either in foreground or background."""
         print("::: Starting BrownDye simulation ...")
@@ -1788,7 +1790,7 @@ quit
                                              parent=self.parent)
         self.traj_f.set(fname)
         return
-    
+
     def analyzeTrajectoryFile(self):
         """Process trajectory file and print various stats."""
         if not os.path.isfile(self.traj_f.get()):
@@ -1806,7 +1808,7 @@ quit
         stuck = int(stuck) / 2
         reacted = int(reacted) / 2
         logline = ('Trajectory file %s contains %d stuck, '
-                   '%d escaped and %d reacted events.\n' 
+                   '%d escaped and %d reacted events.\n'
                    % (self.traj_f.get(), stuck, escaped, reacted))
         self.msg_ent.insert('end', "%s" % logline)
         if reacted == 0:
@@ -1816,7 +1818,7 @@ quit
         command = ('%s/process_trajectories -traj %s '
                    '-index %s.index.xml -srxn association'
                    % (self.bd_path.get(), self.traj_f.get(),
-                       traj_f_base))
+                      traj_f_base))
         p = subprocess.Popen(command, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, shell=True)
         # p.wait()
@@ -1838,7 +1840,7 @@ quit
                 # xpath_str = 'trajectory[n-traj=" %d "]//s/n' % i
                 xpath_str = 'trajectory[n-traj=" %d "]//s' % i
                 j = d.xpath(xpath_str)
-                logline = ('trajectory %d: approx. %s frames\n' 
+                logline = ('trajectory %d: approx. %s frames\n'
                            % (i, len(j) * 20))
                 # % (i, j[0].text.strip()))
                 self.msg_ent.insert('end', "%s" % logline)
@@ -1855,7 +1857,7 @@ quit
             self.msgbar_idx.message('state', str(sel[0]))
         self.dialog_idx.deactivate(result)
         return
-    
+
     def convertTrajectoryToXYZ(self):
         """Convert XML trajectory to XYZ format."""
         traj_f_base = self.traj_f.get().strip('.xml')
@@ -1888,7 +1890,7 @@ quit
     def convertTrajectoryToPQR(self):
         """Convert XML trajectory to PQR format."""
         return
-    
+
     def loadTrajectoryFileXYZ(self):
         """Load XYZ trajectory to pymol."""
         xyz_trajectory_object = 'trajectory-%d' % self.traj_index_n.get()
@@ -1910,7 +1912,7 @@ quit
             is_exe = False
             print("::: Can't find %s!" % command)
         return is_exe
-        
+
     def exitBDPlugin(self, result):
         """Quit BrownDye Tools plugin."""
         #if tkMessageBox.askokcancel("Really quit?",
@@ -1940,7 +1942,7 @@ class RunBDTopThread(Thread):
         stdout, stderr = p.communicate()
         self.outlog = stdout
         self.status = p.returncode
-	try:
+        try:
             self.status_bar.message('state', ' Finished bd_top ...')
             time.sleep(3)
             self.status_bar.message('state', ' Done.')
@@ -1973,12 +1975,12 @@ class RunThread(Thread):
         if DEBUG > 1: print('JOBPID: %d' % JOBPID)
         for line in iter(p.stdout.readline, ''):
             print(line,)
-            self.page.insert('end',"%s" % line)
+            self.page.insert('end', "%s" % line)
         stdout, stderr = p.communicate()
         self.outlog = stdout
         self.status = p.returncode
-	try:
-            self.page.insert('end',"%s %s" % (stdout, stderr))
+        try:
+            self.page.insert('end', "%s %s" % (stdout, stderr))
             # self.page.yview('moveto', 1.0)
         except:
             print("::: Thread error!")
@@ -2000,7 +2002,7 @@ class MonitorThread(Thread):
 
     def run(self):
         seconds = 0
-        readcount = 0 
+        readcount = 0
         #log_fileok = False
         results_file = 'results.xml'
         results_fileok = False
@@ -2022,7 +2024,7 @@ class MonitorThread(Thread):
                     completed = results.xpath('//reactions/completed/n')[0].text.strip()
                     mymsg = '%s out of %d' % (ntraj, self.totntraj)
                     self.msgbar1.message('state', mymsg)
-                    mymsg= '%s / %s / %s' % (completed, escaped, stuck) 
+                    mymsg = '%s / %s / %s' % (completed, escaped, stuck)
                     self.msgbar2.message('state', mymsg)
                 command = ('cat %s | %s/compute_rate_constant'
                            % (results_file, self.bd_path))
@@ -2051,7 +2053,7 @@ class StopThread(Thread):
 
 class Psize(object):
     """Calculate grid size dimensions for a pqr molecule.
-    
+
     This is based on pdb2pqr version of psize. All licensing info applies.
 
     Note: CFAC and FADD defaults changed to accomodate BrownDye requirements.
@@ -2096,7 +2098,7 @@ class Psize(object):
                 ## adhering to lovely PDB format definition (fixed space)
                 words = (line[30:38], line[38:46], line[46:54], line[54:63],
                          line[63:69], line[72:76], line[76:78])
-                if len(filter(string.strip, words)) < 4:    
+                if len(filter(string.strip, words)) < 4:
                     sys.stderr.write("Can't parse following line:\n")
                     sys.stderr.write("%s\n" % line)
                     sys.exit(2)
@@ -2148,9 +2150,6 @@ class Psize(object):
         for i in range(3):
             self.flen[i] = olen[i] + self.constants["FADD"]
             if self.flen[i] > clen[i]:
-                #str = "WARNING: Fine length (%.2f) cannot be larger than coarse length (%.2f)\n" % (self.flen[i], clen[i])
-                #str = str + "         Setting fine grid length equal to coarse grid length\n"
-                #stdout.write(str)
                 self.flen[i] = clen[i]
         return self.flen
 
@@ -2159,7 +2158,7 @@ class Psize(object):
         for i in range(3):
             self.cen[i] = (maxlen[i] + minlen[i]) / 2
         return self.cen
-    
+
     def setFineGridPoints(self, flen):
         """ Compute mesh grid points, assuming 4 levels in MG hierarchy """
         tn = [0, 0, 0]
@@ -2177,14 +2176,14 @@ class Psize(object):
         self.setLength(maxlen, minlen)
         olen = self.getLength()
         self.setCoarseGridDims(olen)
-        clen = self.getCoarseGridDims()        
+        clen = self.getCoarseGridDims()
         self.setFineGridDims(olen, clen)
         flen = self.getFineGridDims()
         self.setCenter(maxlen, minlen)
         cen = self.getCenter()
         self.setFineGridPoints(flen)
         n = self.getFineGridPoints()
-        
+
     def getMax(self): return self.maxlen
     def getMin(self): return self.minlen
     def getCharge(self): return self.q
@@ -2205,7 +2204,7 @@ class Psize(object):
 #
 ##############################################
 if __name__ == '__main__':
-    
+
     class App:
         def my_show(self, *args, **kwargs):
             pass
