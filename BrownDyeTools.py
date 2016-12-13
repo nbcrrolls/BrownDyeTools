@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-08 14:30:57
+# Last modified: 2016-12-12 20:17:40
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -36,7 +36,7 @@ import json
 
 DEBUG = 0
 
-__version__ = '0.3.0'
+__version__ = '0.5.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
 
 PDB2PQR_PATH = None
@@ -44,55 +44,56 @@ APBS_PATH = None
 BD_PATH = None
 CONFIG_FILE = 'bd-config.json'
 DEFAULT_CONTACTS_FILE = 'protein-protein-contacts-default.xml'
-MOL0 = 'mol0'
-MOL1 = 'mol1'
+MOL = ['mol0', 'mol1']
 APBS_EXE = 'apbs'
 PDB2PQR_EXE = 'pdb2pqr'
+BDTOP_EXE = 'bd_top'
 
 pqr_defaults = {
-    'force_field': 'parse',
-    'options': '--apbs-input --chain',
-    'pH': 7.0,
+    'pqr_ff': 'parse',
+    'pqr_opts': '--apbs-input --chain',
+    'pqr_ph': 7.0,
+    'pqr_assign_only': True,
+    'pqr_use_propka': False,
 }
-
 psize_defaults = {
     'cfac': 3.0,
     'fadd': 50.0,
-    'space': 0.5,
+    'gspace': 0.5,
 }
 apbs_defaults = {
-    'mode': 'lpbe',
-    'pdie': 2.0,
-    'sdie': 78.4,
-    'srfm': 'smol',
-    'chgm': 'spl2',
-    'bcfl': 'sdh',
-    'sdens': 10.,
-    'swin': 0.3,
-    'srad': 1.4,
-    'temp': 298.15,
-    'ion_charge': [1, -1],
-    'ion_conc': [0.15, 0.15],
-    'ion_radius': [2.0, 2.0],
+    'apbs_mode': 'lpbe',
+    'apbs_pdie': 4.0,
+    'apbs_sdie': 78.0,
+    'apbs_srfm': 'smol',
+    'apbs_chgm': 'spl2',
+    'apbs_bcfl': 'sdh',
+    'apbs_sdens': 10.,
+    'apbs_swin': 0.3,
+    'apbs_srad': 1.4,
+    'apbs_temp': 298.15,
+    'apbs_ion_charge': [1, -1],
+    'apbs_ion_conc': [0.15, 0.15],
+    'apbs_ion_radius': [1.0, 1.0],
 }
-
 bd_defaults = {
+    'contacts_f': DEFAULT_CONTACTS_FILE,
+    'default_contacts_f': True,
     'ntraj': 100,
     'nthreads': 1,
     'mindx': 0.2,
-    'sdie': apbs_defaults['sdie'],
-    'pdie0': apbs_defaults['pdie'],
-    'pdie1': apbs_defaults['pdie'],
-    'debyel': 0.0,
+    'sdie': apbs_defaults['apbs_sdie'],
+    'pdie': [apbs_defaults['apbs_pdie'], apbs_defaults['apbs_pdie']],
+    'debyel': [0.0, 0.0],
     'ntrajo': 1,
     'ncopies': 200,
     'nbincopies': 200,
     'nsteps': 10000,
     'westeps': 10000,
     'maxnsteps': 10000,
+    'nsteps_per_output': 2,
     'rxn_distance': 5.0,
     'npairs': 3,
-    'nsteps_per_output': 2,
 }
 
 if DEBUG > 0:
@@ -129,13 +130,14 @@ class DummyPymol(object):
                 return 'object:map'
     cmd = Cmd()
 
-real_pymol = 'pymol'
-if DEBUG > 4: real_pymol = 'pymold'
-try:
-    # import pymol
-    pymol = __import__(real_pymol)
-except ImportError:
-    print("::: Pymol import failed - Pymol features not available!")
+if 'pymol.gui' in sys.modules:
+    try:
+        import pymol
+    except ImportError:
+        print("::: Pymol import failed - Pymol features not available!")
+        pymol = DummyPymol()
+else:
+    print("::: Pymol import failed - Pymol features will not available!")
     pymol = DummyPymol()
 
 class BDPlugin(object):
@@ -165,93 +167,84 @@ class BDPlugin(object):
         self.config_file.set(CONFIG_FILE)
         
         # parameters used by pdb2pqr
-        self.mol0 = Tkinter.StringVar()
-        self.mol1 = Tkinter.StringVar()
-        self.mol0.set(None)
-        self.mol1.set(None)
-        self.pqr0 = Tkinter.StringVar()
-        self.pqr1 = Tkinter.StringVar()
-        self.pqr0.set(None)
-        self.pqr1.set(None)
-        self.mol0_object = Tkinter.StringVar()
-        self.mol1_object = Tkinter.StringVar()
-        self.mol0_object.set(None)
-        self.mol1_object.set(None)
-        self.pdb2pqr_opt = Tkinter.StringVar()
-        self.pdb2pqr_opt.set(pqr_defaults['options'])
+        self.mol = [Tkinter.StringVar(), Tkinter.StringVar()]
+        self.mol[0].set(None)
+        self.mol[1].set(None)
+        self.pqr = [Tkinter.StringVar(), Tkinter.StringVar()]
+        self.pqr[0].set(None)
+        self.pqr[1].set(None)
+        self.mol_object = [Tkinter.StringVar(), Tkinter.StringVar()]
+        self.mol_object[0].set(None)
+        self.mol_object[1].set(None)
+        self.pqr_opts = Tkinter.StringVar()
+        self.pqr_opts.set(pqr_defaults['pqr_opts'])
         self.pqr_assign_only = Tkinter.BooleanVar()
-        self.pqr_assign_only.set(True)
-        self.use_propka = Tkinter.BooleanVar()
-        self.use_propka.set(False)
-        self.ph = Tkinter.DoubleVar()
-        self.ph.set(pqr_defaults['pH'])
+        self.pqr_assign_only.set(pqr_defaults['pqr_assign_only'])
+        self.pqr_use_propka = Tkinter.BooleanVar()
+        self.pqr_use_propka.set(pqr_defaults['pqr_use_propka'])
+        self.pqr_ph = Tkinter.DoubleVar()
+        self.pqr_ph.set(pqr_defaults['pqr_ph'])
         self.pqr_ff = Tkinter.StringVar()
-        self.pqr_ff.set(pqr_defaults['force_field'])
+        self.pqr_ff.set(pqr_defaults['pqr_ff'])
 
-        # APBS parameters and defaults
+        # psize/APBS parameters and defaults
         self.gspace = Tkinter.DoubleVar()
-        self.gspace.set(psize_defaults['space'])
+        self.gspace.set(psize_defaults['gspace'])
+        self.cfac = Tkinter.DoubleVar()
+        self.cfac.set(psize_defaults['cfac'])
         self.fadd = Tkinter.DoubleVar()
         self.fadd.set(psize_defaults['fadd'])
-        self.dime0 = [Tkinter.IntVar() for _ in range(3)]
-        [self.dime0[x].set(0) for x in range(3)]
-        self.cglen0 = [Tkinter.DoubleVar() for _ in range(3)]
-        [self.cglen0[x].set(0.0) for x in range(3)]
-        self.fglen0 = [Tkinter.DoubleVar() for _ in range(3)]
-        [self.fglen0[x].set(0.0) for x in range(3)]
-        self.dime1 = [Tkinter.IntVar() for _ in range(3)]
-        [self.dime1[x].set(0) for x in range(3)]
-        self.cglen1 = [Tkinter.DoubleVar() for _ in range(3)]
-        [self.cglen1[x].set(0.0) for x in range(3)]
-        self.fglen1 = [Tkinter.DoubleVar() for _ in range(3)]
-        [self.fglen1[x].set(0.0) for x in range(3)]
-
+        self.dime = [[Tkinter.IntVar() for _ in range(3)],
+                     [Tkinter.IntVar() for _ in range(3)]]
+        self.cglen = [[Tkinter.DoubleVar() for _ in range(3)],
+                      [Tkinter.DoubleVar() for _ in range(3)]]
+        self.fglen = [[Tkinter.DoubleVar() for _ in range(3)],
+                      [Tkinter.DoubleVar() for _ in range(3)]]
         self.apbs_mode = Tkinter.StringVar()
-        self.apbs_mode.set(apbs_defaults['mode'])
-        self.bcfl = Tkinter.StringVar()
-        self.bcfl.set(apbs_defaults['bcfl'])
-        self.ion_charge = [Tkinter.IntVar() for _ in range(2)]
-        self.ion_conc = [Tkinter.DoubleVar() for _ in range(2)]
-        self.ion_rad = [Tkinter.DoubleVar() for _ in range(2)]
-        self.ion_charge[0].set(apbs_defaults['ion_charge'][0])
-        self.ion_charge[1].set(apbs_defaults['ion_charge'][1])
-        [self.ion_conc[x].set(apbs_defaults['ion_conc'][x]) for x in range(2)]
-        [self.ion_rad[x].set(apbs_defaults['ion_radius'][x]) for x in range(2)]
-
-        self.interior_dielectric = Tkinter.DoubleVar()
-        self.interior_dielectric.set(apbs_defaults['pdie'])
-        self.solvent_dielectric = Tkinter.DoubleVar()
-        self.solvent_dielectric.set(apbs_defaults['sdie'])
-        self.chgm = Tkinter.StringVar()
-        self.chgm.set(apbs_defaults['chgm'])
-        self.sdens = Tkinter.DoubleVar()
-        self.sdens.set(apbs_defaults['sdens'])
-        self.swin = Tkinter.DoubleVar()
-        self.swin.set(apbs_defaults['swin'])
-        self.srfm = Tkinter.StringVar()
-        self.srfm.set(apbs_defaults['srfm'])
-        self.srad = Tkinter.DoubleVar()
-        self.srad.set(apbs_defaults['srad'])
-        self.system_temp = Tkinter.DoubleVar()
-        self.system_temp.set(apbs_defaults['temp'])
+        self.apbs_mode.set(apbs_defaults['apbs_mode'])
+        self.apbs_bcfl = Tkinter.StringVar()
+        self.apbs_bcfl.set(apbs_defaults['apbs_bcfl'])
+        self.apbs_ion_charge = [Tkinter.IntVar() for _ in range(2)]
+        self.apbs_ion_conc = [Tkinter.DoubleVar() for _ in range(2)]
+        self.apbs_ion_radius = [Tkinter.DoubleVar() for _ in range(2)]
+        self.apbs_ion_charge[0].set(apbs_defaults['apbs_ion_charge'][0])
+        self.apbs_ion_charge[1].set(apbs_defaults['apbs_ion_charge'][1])
+        [self.apbs_ion_conc[x].set(apbs_defaults['apbs_ion_conc'][x]) for x in range(2)]
+        [self.apbs_ion_radius[x].set(apbs_defaults['apbs_ion_radius'][x]) for x in range(2)]
+        self.apbs_pdie = Tkinter.DoubleVar()
+        self.apbs_pdie.set(apbs_defaults['apbs_pdie'])
+        self.apbs_sdie = Tkinter.DoubleVar()
+        self.apbs_sdie.set(apbs_defaults['apbs_sdie'])
+        self.apbs_chgm = Tkinter.StringVar()
+        self.apbs_chgm.set(apbs_defaults['apbs_chgm'])
+        self.apbs_sdens = Tkinter.DoubleVar()
+        self.apbs_sdens.set(apbs_defaults['apbs_sdens'])
+        self.apbs_swin = Tkinter.DoubleVar()
+        self.apbs_swin.set(apbs_defaults['apbs_swin'])
+        self.apbs_srfm = Tkinter.StringVar()
+        self.apbs_srfm.set(apbs_defaults['apbs_srfm'])
+        self.apbs_srad = Tkinter.DoubleVar()
+        self.apbs_srad.set(apbs_defaults['apbs_srad'])
+        self.apbs_temp = Tkinter.DoubleVar()
+        self.apbs_temp.set(apbs_defaults['apbs_temp'])
 
         # reaction criteria
         self.contacts_f = Tkinter.StringVar()
-        self.contacts_f.set('protein-protein-contacts.xml')
+        self.contacts_f.set(bd_defaults['contacts_f'])
         self.default_contacts_f = Tkinter.BooleanVar()
-        self.default_contacts_f.set(False)
+        self.default_contacts_f.set(bd_defaults['default_contacts_f'])
         self.rxn_distance = Tkinter.DoubleVar()
         self.rxn_distance.set(bd_defaults['rxn_distance'])
         self.npairs = Tkinter.IntVar()
         self.npairs.set(bd_defaults['npairs'])
         
         # BD parameters and defaults
-        self.solvent_eps = Tkinter.DoubleVar()
-        self.solvent_eps.set(self.solvent_dielectric.get())
-        self.mol_eps = [Tkinter.DoubleVar() for _ in range(2)]
-        [self.mol_eps[x].set(self.interior_dielectric.get())  for x in range(2)]
+        self.sdie = Tkinter.DoubleVar()
+        self.sdie.set(self.apbs_sdie.get())
+        self.pdie = [Tkinter.DoubleVar() for _ in range(2)]
+        [self.pdie[x].set(self.apbs_pdie.get())  for x in range(2)]
         self.debyel = [Tkinter.DoubleVar() for _ in range(2)]
-        [self.debyel[x].set(bd_defaults['debyel']) for x in range(2)]
+        [self.debyel[x].set(bd_defaults['debyel'][x]) for x in range(2)]
         self.ntraj = Tkinter.IntVar()
         self.ntraj.set(bd_defaults['ntraj'])
         self.nthreads = Tkinter.IntVar()
@@ -371,26 +364,26 @@ class BDPlugin(object):
         grp_pqr = Tkinter.LabelFrame(page, text='PQR files')
         grp_pqr.grid(sticky='eswn', row=0, column=0, columnspan=3, **pref)
 
-        pdb_0_ent = Pmw.EntryField(grp_pqr,
+        pdb0_ent = Pmw.EntryField(grp_pqr,
                                    label_text='Molecule 0 PDB file:', labelpos='wn',
-                                   entry_textvariable=self.mol0)
-        pdb_0_but = Tkinter.Button(grp_pqr, text='Browse...',
+                                   entry_textvariable=self.mol[0])
+        pdb0_but = Tkinter.Button(grp_pqr, text='Browse...',
                                    command=lambda: self.getPDBMol(0))
         label0 = Tkinter.Label(grp_pqr, text='or')
         pymol_obj0_opt = Pmw.OptionMenu(grp_pqr, labelpos='w',
                                         label_text='Select molecule 0: ',
-                                        menubutton_textvariable=self.mol0_object,
+                                        menubutton_textvariable=self.mol_object[0],
                                         menubutton_width=7,
                                         items=(['None'] + pymol.cmd.get_names("all")))
-        pdb_1_ent = Pmw.EntryField(grp_pqr,
+        pdb1_ent = Pmw.EntryField(grp_pqr,
                                    label_text='Molecule 1 PDB file:', labelpos='wn',
-                                   entry_textvariable=self.mol1)
-        pdb_1_but = Tkinter.Button(grp_pqr, text='Browse...',
+                                   entry_textvariable=self.mol[1])
+        pdb1_but = Tkinter.Button(grp_pqr, text='Browse...',
                                    command=lambda: self.getPDBMol(1))
         label1 = Tkinter.Label(grp_pqr, text='or')
         pymol_obj1_opt = Pmw.OptionMenu(grp_pqr, labelpos='w',
                                         label_text='Select molecule 1: ',
-                                        menubutton_textvariable=self.mol1_object,
+                                        menubutton_textvariable=self.mol_object[1],
                                         menubutton_width=7,
                                         items=(['None'] + pymol.cmd.get_names("all")))
         pqr_ff_opt = Pmw.OptionMenu(grp_pqr, labelpos='w',
@@ -406,34 +399,34 @@ class BDPlugin(object):
                                          command=lambda: propka_but.toggle())
         propka_but = Tkinter.Checkbutton(grp_pqr,
                                          text=('Use PROPKA to assign protonation states'),
-                                         variable=self.use_propka,
+                                         variable=self.pqr_use_propka,
                                          onvalue=True, offvalue=False,
                                          command=lambda: pqr_an_but.toggle())
         ph_ent = Pmw.EntryField(grp_pqr, labelpos='w',
                                 label_text='pH: ',
                                 validate={'validator': 'real', 'min': 0.00},
-                                entry_textvariable=self.ph,
+                                entry_textvariable=self.pqr_ph,
                                 entry_width=4)
         pqr_opt_but = Tkinter.Button(page, text='Create PQR files',
                                      command=self.pdb2pqr)
         label2 = Tkinter.Label(page, text='or load your PQR files:')
         pqr_0_ent = Pmw.EntryField(page,
                                    label_text='Molecule 0 PQR file:', labelpos='wn',
-                                   entry_textvariable=self.pqr0)
+                                   entry_textvariable=self.pqr[0])
         pqr_0_but = Tkinter.Button(page, text='Browse...',
-                                   command=self.getPQRMol0)
+                                   command=lambda: self.getPQRMol(0))
         pqr_1_ent = Pmw.EntryField(page,
                                    label_text='Molecule 1 PQR file:', labelpos='wn',
-                                   entry_textvariable=self.pqr1)
+                                   entry_textvariable=self.pqr[1])
         pqr_1_but = Tkinter.Button(page, text='Browse...',
-                                   command=self.getPQRMol1)
+                                   command=lambda: self.getPQRMol(1))
 
-        pdb_0_ent.grid(     sticky='we', row=0, column=0, **pref)
-        pdb_0_but.grid(     sticky='we', row=0, column=1, **pref)
+        pdb0_ent.grid(     sticky='we', row=0, column=0, **pref)
+        pdb0_but.grid(     sticky='we', row=0, column=1, **pref)
         label0.grid(        sticky='we', row=0, column=2, **pref)
         pymol_obj0_opt.grid(sticky='we', row=0, column=3, **pref)
-        pdb_1_ent.grid(     sticky='we', row=1, column=0, **pref)
-        pdb_1_but.grid(     sticky='we', row=1, column=1, **pref)
+        pdb1_ent.grid(     sticky='we', row=1, column=0, **pref)
+        pdb1_but.grid(     sticky='we', row=1, column=1, **pref)
         label1.grid(        sticky='we', row=1, column=2, **pref)
         pymol_obj1_opt.grid(sticky='we', row=1, column=3, **pref)
         pqr_ff_opt.grid(    sticky='we', row=2, column=0, **pref)
@@ -475,103 +468,103 @@ class BDPlugin(object):
         dime0_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                      label_text='dime: ',
                                      validate={'validator': 'integer', 'min': 0},
-                                     entry_textvariable=self.dime0[0],
+                                     entry_textvariable=self.dime[0][0],
                                      entry_width=5)
         dime0_1_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                      label_text='',
                                      validate={'validator': 'integer', 'min': 0},
-                                     entry_textvariable=self.dime0[1],
+                                     entry_textvariable=self.dime[0][1],
                                      entry_width=5)
         dime0_2_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                      label_text='',
                                      validate={'validator': 'integer', 'min': 0},
-                                     entry_textvariable=self.dime0[2],
+                                     entry_textvariable=self.dime[0][2],
                                      entry_width=5)
         cglen0_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='cglen: ',
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.cglen0[0],
+                                      entry_textvariable=self.cglen[0][0],
                                       entry_width=8)
         cglen0_1_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.cglen0[1],
+                                      entry_textvariable=self.cglen[0][1],
                                       entry_width=8)
         cglen0_2_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.cglen0[2],
+                                      entry_textvariable=self.cglen[0][2],
                                       entry_width=8)
         fglen0_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='fglen: ',
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.fglen0[0],
+                                      entry_textvariable=self.fglen[0][0],
                                       entry_width=8)
         fglen0_1_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.fglen0[1],
+                                      entry_textvariable=self.fglen[0][1],
                                       entry_width=8)
         fglen0_2_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.00},
-                                      entry_textvariable=self.fglen0[2],
+                                      entry_textvariable=self.fglen[0][2],
                                       entry_width=8)
         get_size0_but = Tkinter.Button(grp_grids,
                                        text="Set grid",
-                                       command=self.getSizemol0)
+                                       command=lambda: self.getSizemol(0))
         label1 = Tkinter.Label(grp_grids, text='Molecule 1')
         dime1_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                      label_text='dime: ',
                                      # value=self.dime1[0].get(),
                                      validate={'validator': 'integer', 'min': 0},
-                                     entry_textvariable=self.dime1[0],
+                                     entry_textvariable=self.dime[1][0],
                                      entry_width=5)
         dime1_1_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                      label_text='',
                                      validate={'validator': 'integer', 'min': 0},
-                                     entry_textvariable=self.dime1[1],
+                                     entry_textvariable=self.dime[1][1],
                                      entry_width=5)
         dime1_2_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                      label_text='',
                                      validate={'validator': 'integer', 'min': 0},
-                                     entry_textvariable=self.dime1[2],
+                                     entry_textvariable=self.dime[1][2],
                                      entry_width=5)
 
         cglen1_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='cglen: ',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.cglen1[0],
+                                      entry_textvariable=self.cglen[1][0],
                                       entry_width=8)
         cglen1_1_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.cglen1[1],
+                                      entry_textvariable=self.cglen[1][1],
                                       entry_width=8)
         cglen1_2_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.cglen1[2],
+                                      entry_textvariable=self.cglen[1][2],
                                       entry_width=8)
         fglen1_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='fglen: ',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.fglen1[0],
+                                      entry_textvariable=self.fglen[1][0],
                                       entry_width=8)
         fglen1_1_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.fglen1[1],
+                                      entry_textvariable=self.fglen[1][1],
                                       entry_width=8)
         fglen1_2_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.fglen1[2],
+                                      entry_textvariable=self.fglen[1][2],
                                       entry_width=8)
 
         get_size1_but = Tkinter.Button(grp_grids,
                                        text="Set grid",
-                                       command=self.getSizemol1)
+                                       command=lambda: self.getSizemol(1))
 
         gspace_ent.grid(sticky='we', row=0, column=0, **pref)
         fadd_ent.grid(sticky='we', row=0, column=1, columnspan=2, **pref)
@@ -611,73 +604,73 @@ class BDPlugin(object):
         solvent_die_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                          label_text='Solvent eps :',
                                          validate={'validator': 'real', 'min': 0.0},
-                                         entry_textvariable=self.solvent_dielectric,
+                                         entry_textvariable=self.apbs_sdie,
                                          entry_width=10)
         solute_die_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                         label_text='Molecule 0/1 eps: ',
                                         validate={'validator': 'real', 'min': 0.0},
-                                        entry_textvariable=self.interior_dielectric,
+                                        entry_textvariable=self.apbs_pdie,
                                         entry_width=10)
         ion1_charge_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                          label_text='Ion(1) charge: ',
                                          validate={'validator': 'integer', 'min': -2},
-                                         entry_textvariable=self.ion_charge[0],
+                                         entry_textvariable=self.apbs_ion_charge[0],
                                          entry_width=5)
         ion1_conc_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                        label_text='conc.: ',
                                        validate={'validator': 'real', 'min': 0.0},
-                                       entry_textvariable=self.ion_conc[0],
+                                       entry_textvariable=self.apbs_ion_conc[0],
                                        entry_width=5)
         ion1_rad_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                       label_text='radius: ',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.ion_rad[0],
+                                      entry_textvariable=self.apbs_ion_radius[0],
                                       entry_width=5)
         ion2_charge_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                          label_text='Ion(2) charge: ',
                                          validate={'validator': 'integer', 'min': -2},
-                                         entry_textvariable=self.ion_charge[1],
+                                         entry_textvariable=self.apbs_ion_charge[1],
                                          entry_width=5)
         ion2_conc_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                        label_text='conc.: ',
                                        validate={'validator': 'real', 'min': 0.0},
-                                       entry_textvariable=self.ion_conc[1],
+                                       entry_textvariable=self.apbs_ion_conc[1],
                                        entry_width=5)
         ion2_rad_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                       label_text='radius: ',
                                       validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.ion_rad[1],
+                                      entry_textvariable=self.apbs_ion_radius[1],
                                       entry_width=5)
 
         sdens_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                    label_text='Surf. sphere density: ',
                                    validate={'validator': 'real', 'min': 0.0},
-                                   entry_textvariable=self.sdens, entry_width=5)
+                                   entry_textvariable=self.apbs_sdens, entry_width=5)
         srad_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                   label_text='Solvent radius: ',
                                   validate={'validator': 'real', 'min': 0.0},
-                                  entry_textvariable=self.srad, entry_width=5)
+                                  entry_textvariable=self.apbs_srad, entry_width=5)
         swin_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                   label_text='Spline window: ',
                                   validate={'validator': 'real', 'min': 0.0},
-                                  entry_textvariable=self.swin, entry_width=5)
+                                  entry_textvariable=self.apbs_swin, entry_width=5)
         temp_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                   label_text='Temperature: ',
                                   validate={'validator': 'real', 'min': 0.0},
-                                  entry_textvariable=self.system_temp, entry_width=5)
+                                  entry_textvariable=self.apbs_temp, entry_width=5)
         bcfl_ent = Pmw.OptionMenu(grp_apbs, labelpos='w',
                                   label_text='Boundary condition: ',
-                                  menubutton_textvariable=self.bcfl,
+                                  menubutton_textvariable=self.apbs_bcfl,
                                   menubutton_width=5,
                                   items=['sdh', 'zero', 'mdh', 'focus'])
         chgm_ent = Pmw.OptionMenu(grp_apbs, labelpos='w',
                                   label_text='Charge mapping: ',
-                                  menubutton_textvariable=self.chgm,
+                                  menubutton_textvariable=self.apbs_chgm,
                                   menubutton_width=5,
                                   items=['spl2', 'spl0', 'spl4'])
         srfm_ent = Pmw.OptionMenu(grp_apbs, labelpos='w',
                                   label_text='Diel. surf. calc. method: ',
-                                  menubutton_textvariable=self.srfm,
+                                  menubutton_textvariable=self.apbs_srfm,
                                   menubutton_width=5,
                                   items=['smol', 'mol', 'spl2', 'spl4'])
 
@@ -754,24 +747,24 @@ class BDPlugin(object):
         grp_bdinput = Tkinter.LabelFrame(page, text='BrownDye input file')
         grp_bdinput.grid(sticky='eswn', row=0, column=0, columnspan=2, **pref)
 
-        solvent_eps_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
-                                         label_text='Solvent eps: ',
-                                         validate={'validator': 'real', 'min': 0.0},
-                                         entry_textvariable=self.solvent_eps, entry_width=5)
+        sdie_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
+                                  label_text='Solvent eps: ',
+                                  validate={'validator': 'real', 'min': 0.0},
+                                  entry_textvariable=self.sdie, entry_width=5)
         debyel_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
                                     label_text='Solvent Debye length: ',
                                     validate={'validator': 'real', 'min': 0.0},
                                     entry_textvariable=self.debyel[0], entry_width=5)
         get_debyel_but = Tkinter.Button(grp_bdinput, text='Get Debye length',
                                         command=self.getDebyeLength)
-        mol0_eps_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
-                                      label_text='Molecule 0 eps: ',
-                                      validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.mol_eps[0], entry_width=5)
-        mol1_eps_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
-                                      label_text='Molecule 1 eps: ',
-                                      validate={'validator': 'real', 'min': 0.0},
-                                      entry_textvariable=self.mol_eps[1], entry_width=5)
+        pdie0_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
+                                   label_text='Molecule 0 eps: ',
+                                   validate={'validator': 'real', 'min': 0.0},
+                                   entry_textvariable=self.pdie[0], entry_width=5)
+        pdie1_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
+                                   label_text='Molecule 1 eps: ',
+                                   validate={'validator': 'real', 'min': 0.0},
+                                   entry_textvariable=self.pdie[1], entry_width=5)
         ntraj_ent = Pmw.EntryField(grp_bdinput, labelpos='wn',
                                    label_text='Number of trajectories: ',
                                    validate={'validator': 'integer', 'min': 1},
@@ -820,11 +813,11 @@ class BDPlugin(object):
                                          labelpos='w', label_text='Status:')
         self.status_bar.message('state', '')
 
-        solvent_eps_ent.grid(sticky='we', row=1, column=0, **pref)
+        sdie_ent.grid(sticky='we', row=1, column=0, **pref)
         debyel_ent.grid(     sticky='we', row=2, column=0, **pref)
         get_debyel_but.grid( sticky='w',  row=2, column=1, **pref)
-        mol0_eps_ent.grid(   sticky='we', row=3, column=0, **pref)
-        mol1_eps_ent.grid(   sticky='we', row=3, column=1, **pref)
+        pdie0_ent.grid(   sticky='we', row=3, column=0, **pref)
+        pdie1_ent.grid(   sticky='we', row=3, column=1, **pref)
 
         ntraj_ent.grid(      sticky='we', row=4, column=0, **pref)
         nthreads_ent.grid(   sticky='we', row=4, column=1, **pref)
@@ -1060,38 +1053,31 @@ class BDPlugin(object):
         with open(configf) as f:    
             data = json.load(f)
 
-        pqr_config = data["pdb2pqr"]
-        self.pdb2pqr_opt.set(pqr_config["opt"])
-        self.use_propka.set(pqr_config["use propka"])
-        self.pqr_assign_only.set(pqr_config["assign only"])
-        self.ph.set(pqr_config["pH"])
-        self.pqr_ff.set(pqr_config["force field"])
-
-        self.gspace.set(data["psize"]["gspace"])
-        self.fadd.set(data["psize"]["fadd"])
-                        
-        self.interior_dielectric.set(data["apbs"]["sdie"])
-        self.solvent_dielectric.set(data["apbs"]["pdie"])
-        
         self.pdb2pqr_path.set(data['paths']['PDB2PQR_PATH'])
         self.apbs_path.set(data['paths']['APBS_PATH'])
         self.bd_path.set(data['paths']['BD_PATH'])
         self.projectDir.set(data['paths']['ProjectDir'])    
 
+        pqr_config = data['pdb2pqr']
+        for k in pqr_defaults:
+            getattr(self, k).set(pqr_config[k])
+        psize_config = data['psize']
+        for k in psize_defaults:
+            getattr(self, k).set(psize_config[k])
+        apbs_config = data['apbs']
+        for k in apbs_defaults:
+            try:
+                getattr(self, k).set(apbs_config[k])
+            except AttributeError:
+                getattr(self, k)[0].set(apbs_config[k][0])
+                getattr(self, k)[1].set(apbs_config[k][1])
         bd_config = data["browndye"]
-        self.contacts_f.set(bd_config["contacts file"])
-        self.default_contacts_f.set(bd_config["use default contacts file"])
-        self.ntraj.set(bd_config["ntraj"])
-        self.nthreads.set(bd_config["nthreads"])
-        self.mindx.set(bd_config["mindx"])
-        self.ntrajo.set(bd_config["ntrajo"])
-        self.ncopies.set(bd_config["ncopies"])
-        self.nbincopies.set(bd_config["nbincopies"])
-        self.nsteps.set(bd_config["nsteps"])
-        self.westeps.set(bd_config["westeps"])
-        self.maxnsteps.set(bd_config["maxnsteps"])
-        self.nsteps_per_output.set(bd_config["nsteps_per_output"])
-
+        for k in bd_defaults:
+            try:
+                getattr(self, k).set(bd_config[k])
+            except AttributeError:
+                getattr(self, k)[0].set(bd_config[k][0])
+                getattr(self, k)[1].set(bd_config[k][1])
         return
 
     def saveConfig(self):
@@ -1104,35 +1090,26 @@ class BDPlugin(object):
             "BD_PATH": self.bd_path.get(),
             "ProjectDir": self.projectDir.get()
         }
-        pqr_config = {
-            "opt": self.pdb2pqr_opt.get(),
-            "use propka": self.use_propka.get(),
-            "pH": self.ph.get(),
-            "force field": self.pqr_ff.get(),
-            "assign only": self.pqr_assign_only.get()
-        }
-        psize_config = {
-            "gspace": self.gspace.get(),
-            "fadd": self.fadd.get(),
-        }
-        apbs_config = {
-            "sdie": self.interior_dielectric.get(),
-            "pdie": self.solvent_dielectric.get(),
-        }
-        bd_config = {
-            "contacts file": self.contacts_f.get(),
-            "use default contacts file": self.default_contacts_f.get(),
-            "ntraj": self.ntraj.get(),
-            "nthreads": self.nthreads.get(),
-            "mindx": self.mindx.get(),
-            "ntrajo": self.ntrajo.get(),
-            "ncopies": self.ncopies.get(),
-            "nbincopies": self.nbincopies.get(),
-            "nsteps": self.nsteps.get(),
-            "westeps": self.westeps.get(),
-            "maxnsteps": self.maxnsteps.get(),
-            "nsteps_per_output": self.nsteps_per_output.get(),
-        }
+        pqr_config = {}
+        for k in pqr_defaults:
+            pqr_config[k] = getattr(self, k).get()
+        psize_config = {}
+        for k in psize_defaults:
+            psize_config[k] = getattr(self, k).get()
+        apbs_config = {}
+        for k in apbs_defaults:
+            try:
+                apbs_config[k] = getattr(self, k).get()
+            except AttributeError:
+                apbs_config[k] = [getattr(self, k)[0].get(),
+                                  getattr(self, k)[1].get()]
+        bd_config = {}
+        for k in bd_defaults:
+            try:
+                bd_config[k] = getattr(self, k).get()
+            except AttributeError:
+                bd_config[k] = [getattr(self, k)[0].get(),
+                                getattr(self, k)[1].get()]
         bdtools_config ={
             "version": __version__,
             "date": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
@@ -1149,16 +1126,13 @@ class BDPlugin(object):
 
     def getPDBMol(self, n):
         """Get molecule 0/1 PDB filename."""
-        fname = tkFileDialog.askopenfilename(title='PDB File',
+        fname = tkFileDialog.askopenfilename(title='Select PDB File',
                                              initialdir='',
                                              filetypes=[
                                                  ('pdb files', '*.pdb *.ent'),
                                                  ('all files', '*')],
                                              parent=self.parent)
-        if n == 0:
-            self.mol0.set(fname)
-        else:
-            self.mol1.set(fname)
+        self.mol[n].set(fname)
         return
         
     def selectMol0(self, result):
@@ -1189,41 +1163,25 @@ class BDPlugin(object):
         self.dialog1.activate()
         return
 
-    def getPQRMol0(self):
-        """Get molecule 0 PQR filename."""
-        fname = tkFileDialog.askopenfilename(title='PQR File',
+    def getPQRMol(self, n):
+        """Get molecule 0/1 PQR filename."""
+        fname = tkFileDialog.askopenfilename(title='Select PQR File',
                                              initialdir='',
                                              filetypes=[
                                                  ('pqr files', '*.pqr'),
                                                  ('all files', '*')],
                                              parent=self.parent)
         if len(fname) > 0:
-            self.pqr0.set(fname)
-            target_f = '%s/%s.pqr' % (self.projectDir.get(), MOL0)
+            self.pqr[n].set(fname)
+            target_f = '%s/%s.pqr' % (self.projectDir.get(), MOL[n])
             if fname != target_f:
                 if os.path.isfile(target_f): os.remove(target_f)
-                shutil.copyfile(self.pqr0.get(), target_f)
+                shutil.copyfile(self.pqr[n].get(), target_f)
         return
 
-    def getPQRMol1(self):
-        """Get molecule 1 PQR filename."""
-        fname = tkFileDialog.askopenfilename(title='PQR File',
-                                             initialdir='',
-                                             filetypes=[
-                                                 ('pqr files', '*.pqr'),
-                                                 ('all files', '*')],
-                                             parent=self.parent)
-        if len(fname) > 0:
-            self.pqr1.set(fname)
-            target_f = '%s/%s.pqr' % (self.projectDir.get(), MOL1)
-            if fname != target_f:
-                if os.path.isfile(target_f): os.remove(target_f)
-                shutil.copyfile(self.pqr1.get(), target_f)
-        return
-
-    def getSizemol0(self):
-        """Calculate APBS grid dimensions for molecule 0."""
-        pqr_fname = '%s.pqr' % MOL0
+    def getSizemol(self, n):
+        """Calculate APBS grid dimensions for molecule 0/1."""
+        pqr_fname = '%s.pqr' % MOL[n]
         if not os.path.isfile(pqr_fname):
             print("::: %s does not exist!" % pqr_fname)
             return
@@ -1233,28 +1191,11 @@ class BDPlugin(object):
         grid_points = psize.getFineGridPoints()
         cglen = psize.getCoarseGridDims()
         fglen = psize.getFineGridDims()
-        [self.dime0[x].set(grid_points[x]) for x in range(3)]
-        [self.cglen0[x].set(cglen[x]) for x in range(3)]
-        [self.fglen0[x].set(fglen[x]) for x in range(3)]
+        [self.dime[n][x].set(grid_points[x]) for x in range(3)]
+        [self.cglen[n][x].set(cglen[x]) for x in range(3)]
+        [self.fglen[n][x].set(fglen[x]) for x in range(3)]
         return
 
-    def getSizemol1(self):
-        """Calculate APBS grid dimensions for molecule 1."""
-        pqr_fname = '%s.pqr' % MOL1
-        if not os.path.isfile(pqr_fname):
-            print("::: %s does not exist!" % pqr_fname)
-            return
-        psize = Psize(self)
-        psize.runPsize(pqr_fname)
-        #print(psize.getCharge())
-        grid_points = psize.getFineGridPoints()
-        cglen = psize.getCoarseGridDims()
-        fglen = psize.getFineGridDims()
-        [self.dime1[x].set(grid_points[x]) for x in range(3)]
-        [self.cglen1[x].set(cglen[x]) for x in range(3)]
-        [self.fglen1[x].set(fglen[x]) for x in range(3)]
-        return
-    
     def getContacts(self):
         """Get contacts file."""
         fname = tkFileDialog.askopenfilename(
@@ -1270,49 +1211,37 @@ class BDPlugin(object):
             print("::: Project directory does not exist!")
             print("::: You need to set it first.")
             return
-        target_f = '%s.pdb' % MOL0
-        if self.mol0_object.get() == 'None':
-            # if not filecmp.cmp(self.mol0.get(), target_f):
-            try:
-                shutil.copyfile(self.mol0.get(), target_f)
-            except:
-                e = sys.exc_info()[0]
-                print(e)
-                print("::: Creating of %s failed!" % target_f)
-                return
-        else:
-            pymol.cmd.save(filename=target_f,
-                           selection=self.mol0_object.get())
-        target_f = '%s.pdb' % MOL1
-        if self.mol1_object.get() == 'None':
-            # if not filecmp.cmp(self.mol1.get(), target_f):
-            try:
-                shutil.copyfile(self.mol1.get(), target_f)
-            except:
-                e = sys.exc_info()[0]
-                print(e)
-                print("::: Creating of %s failed!" % target_f)
-                return
-        else:
-            pymol.cmd.save(filename=target_f,
-                           selection=self.mol1_object.get())
-
-        assign_only = ''
-        if self.pqr_assign_only.get(): assign_only = '--assign-only'
-        if self.use_propka.get():
-            use_propka = '--ph-calc-method=propka --with-ph=%s --drop-water' % self.ph.get()
+        for i in range(2):
+            target_f = '%s.pdb' % MOL[i]
+            if self.mol_object[i].get() == 'None':
+                # if not filecmp.cmp(self.mol0.get(), target_f):
+                try:
+                    shutil.copyfile(self.mol[i].get(), target_f)
+                except:
+                    e = sys.exc_info()[0]
+                    print(e)
+                    print("::: Creating of %s failed!" % target_f)
+                    return
+            else:
+                pymol.cmd.save(filename=target_f,
+                               selection=self.mol_object[i].get())
+        if self.pqr_assign_only.get():
+            assign_only = '--assign-only'
+            use_propka = ''
+        if self.pqr_use_propka.get():
             assign_only = ''
+            use_propka = '--ph-calc-method=propka --with-ph=%s --drop-water' % self.pqr_ph.get()
             self.pqr_ff.set('parse')
             print("::: Using PROPKA to assign protonation states and "
                   "optimizing the structure.\n"
                   "The force field is set to PARSE.")
 
         pqr_options = ('%s %s %s --ff=%s' %
-                       (assign_only, use_propka, self.pdb2pqr_opt.get(),
+                       (assign_only, use_propka, self.pqr_opts.get(),
                         self.pqr_ff.get()))
         pdb2pqr_exe = ('%s/%s' % (self.pdb2pqr_path.get(), PDB2PQR_EXE))
-        if not self.check_exe(pdb2pqr_exe): return
-        for i in [MOL0, MOL1]:
+        if not self.checkExe(pdb2pqr_exe): return
+        for i in MOL:
             command = ('%s %s %s.pdb %s.pqr' %
                        (pdb2pqr_exe, pqr_options, i, i))
             if DEBUG > 2: print(command)
@@ -1359,52 +1288,46 @@ print elecEnergy 1 end
 quit
 """
         apbs_exe = '%s/%s' % (self.apbs_path.get(), APBS_EXE)
-        if not self.check_exe(apbs_exe): return
-        for i in [MOL0, MOL1]:
-            pqr_filename = '%s.pqr' % i
-            if i == MOL0:
-                grid_points = [self.dime0[x].get() for x in range(3)]
-                cglen = [self.cglen0[x].get() for x in range(3)]
-                fglen = [self.fglen0[x].get() for x in range(3)]
-            if i == MOL1:
-                grid_points = [self.dime1[x].get() for x in range(3)]
-                cglen = [self.cglen1[x].get() for x in range(3)]
-                fglen = [self.fglen1[x].get() for x in range(3)]
+        if not self.checkExe(apbs_exe): return
+        for i in range(2):
+            pqr_filename = '%s.pqr' % MOL[i]
+            grid_points = [self.dime[i][x].get() for x in range(3)]
+            cglen = [self.cglen[i][x].get() for x in range(3)]
+            fglen = [self.fglen[i][x].get() for x in range(3)]
             if grid_points[0] == 0 or grid_points[1] == 0 or grid_points[2] == 0:
-                print("::: %s - no grid points defined!" % i)
+                print("::: %s - no grid points defined!" % MOL[i])
                 return
-            dx_filename = i
-            fout = '%s.in' % i
+            dx_filename = MOL[i]
+            fout = '%s.in' % MOL[i]
             with open(fout, "w") as f:
                 f.write((apbs_template %
                          (pqr_filename,
                           grid_points[0], grid_points[1], grid_points[2],
                           cglen[0], cglen[1], cglen[2],
                           fglen[0], fglen[1], fglen[2],
-                          self.apbs_mode.get(), self.bcfl.get(),
-                          self.ion_charge[0].get(),
-                          self.ion_conc[0].get(), self.ion_rad[0].get(),
-                          self.ion_charge[1].get(),
-                          self.ion_conc[1].get(), self.ion_rad[1].get(),
-                          self.interior_dielectric.get(),
-                          self.solvent_dielectric.get(),
-                          self.chgm.get(), self.sdens.get(),
-                          self.srfm.get(), self.srad.get(),
-                          self.swin.get(), self.system_temp.get(),
+                          self.apbs_mode.get(), self.apbs_bcfl.get(),
+                          self.apbs_ion_charge[0].get(),
+                          self.apbs_ion_conc[0].get(), self.apbs_ion_radius[0].get(),
+                          self.apbs_ion_charge[1].get(),
+                          self.apbs_ion_conc[1].get(), self.apbs_ion_radius[1].get(),
+                          self.apbs_pdie.get(),
+                          self.apbs_sdie.get(),
+                          self.apbs_chgm.get(), self.apbs_sdens.get(),
+                          self.apbs_srfm.get(), self.apbs_srad.get(),
+                          self.apbs_swin.get(), self.apbs_temp.get(),
                           dx_filename)))
 
-            command = 'MCSH_HOME=. %s %s.in' % (apbs_exe, i)
+            command = 'MCSH_HOME=. %s %s.in' % (apbs_exe, MOL[i])
             if DEBUG > 2:
                 print(command)
                 print(grid_points)
-                print(cglen)
-                print(fglen)
-            print("::: Running apbs on %s ... " % i)
+                print(cglen, fglen)
+            print("::: Running apbs on %s ... " % MOL[i])
             gmem = 200.0 * grid_points[0] * grid_points[1] * grid_points[2] / 1024 / 1024
             print("::: Estimated memory requirements: %.3f MB" % gmem)
             rc = self.runCmd(command)
             if rc == 0:
-                iomc = '%s-io.mc' % i
+                iomc = '%s-io.mc' % MOL[i]
                 if os.path.isfile(iomc): os.remove(iomc)
                 shutil.copyfile('io.mc', iomc)
                 print("::: Done.")
@@ -1415,9 +1338,7 @@ quit
     def getDebyeLength(self):
         dl = [[], []]
         for i in range(2):
-            if i == 0: mol = MOL0
-            if i == 1: mol = MOL1
-            fname = '%s-io.mc' % mol
+            fname = '%s-io.mc' % MOL[i]
             if DEBUG > 2: print("Parsing %s for Debye length ..." % fname)
             if not os.path.isfile(fname):
                 print("::: File %s does not exist!" % fname )
@@ -1430,7 +1351,7 @@ quit
                         dl[i].append(l[0].split(' ')[3])
             if len(dl[i]) == 0:
                 print("::: No Debye length found in %s for %s!" %
-                      (fname, mol))
+                      (fname, MOL[i]))
                 return
         if DEBUG > 2: print("Debye lengths: %s %s" %
                             (dl[0][-1], dl[1][-1]))
@@ -1444,8 +1365,8 @@ quit
     def runPqr2xml(self):
         """Run pqr2xml on mol0 and mol1 PQR files. """
         pqr2xml_exe = '%s/pqr2xml' % self.bd_path.get()
-        if not self.check_exe(pqr2xml_exe): return
-        for i in [MOL0, MOL1]:
+        if not self.checkExe(pqr2xml_exe): return
+        for i in MOL:
             command = ('%s < %s.pqr > %s-atoms.pqrxml'
                        % (pqr2xml_exe, i, i))
             if DEBUG > 2: print(command)
@@ -1715,8 +1636,8 @@ quit
         command = ('%s/make_rxn_pairs '
                    '-nonred -mol0 %s-atoms.pqrxml -mol1 %s-atoms.pqrxml '
                    '-ctypes %s  -dist %f > %s-%s-rxn-pairs.xml'
-                   % (self.bd_path.get(), MOL0, MOL1, self.contacts_f.get(),
-                      self.rxn_distance.get(), MOL0, MOL1))
+                   % (self.bd_path.get(), MOL[0], MOL[1], self.contacts_f.get(),
+                      self.rxn_distance.get(), MOL[0], MOL[1]))
         if DEBUG > 2: print(command)
         print("::: Running make_rxn_pairs ...")
         rc = self.runCmd(command)
@@ -1727,8 +1648,8 @@ quit
         command =('%s/make_rxn_file '
                   '-pairs %s-%s-rxn-pairs.xml -distance %f '
                   ' -nneeded %d > %s-%s-rxns.xml'
-                  % (self.bd_path.get(), MOL0, MOL1, self.rxn_distance.get(),
-                     self.npairs.get(), MOL0, MOL1))
+                  % (self.bd_path.get(), MOL[0], MOL[1], self.rxn_distance.get(),
+                     self.npairs.get(), MOL[0], MOL[1]))
         if DEBUG > 2: print(command)
         print("::: Running make_rxn_file ...")
         rc = self.runCmd(command)
@@ -1784,24 +1705,23 @@ quit
 </root>
 """
         bdtop_input = 'input.xml'
-        BDTOP_EXE = 'bd_top'
         if self.debyel[0].get() == 0.0:
             print("::: Invalid Debye length (%s)!" % self.debyel[0].get())
             print("::: Acquire Debye length first")
             return
         with open(bdtop_input, "w") as f:
             f.write((nam_simulation_template %
-                     (self.solvent_eps.get(), self.debyel[0].get(),
+                     (self.sdie.get(), self.debyel[0].get(),
                       self.ntraj.get(), self.nthreads.get(),
-                      MOL0, MOL0, MOL0, self.mol_eps[0].get(),
-                      MOL1, MOL1, MOL1, self.mol_eps[1].get(),
-                      self.mindx.get(), MOL0, MOL1,
+                      MOL[0], MOL[0], MOL[0], self.pdie[0].get(),
+                      MOL[1], MOL[1], MOL[1], self.pdie[1].get(),
+                      self.mindx.get(), MOL[0], MOL[1],
                       self.ntrajo.get(),
                       self.ncopies.get(), self.nbincopies.get(),
                       self.nsteps.get(), self.westeps.get(),
                       self.maxnsteps.get(),
                       self.nsteps_per_output.get())))
-        for i in [MOL0, MOL1]:
+        for i in MOL:
             dxfile = '%s.dx' % i
             if not os.path.isfile(dxfile):
                 print("::: %s DX file does not exist!" % dxfile)
@@ -1825,9 +1745,9 @@ quit
         """Start BrownDye simulation either in foreground or background."""
         print("::: Starting BrownDye simulation ...")
         nam_simulation_exe = '%s/nam_simulation' % self.bd_path.get()
-        if not self.check_exe(nam_simulation_exe): return
+        if not self.checkExe(nam_simulation_exe): return
         command = ('%s %s-%s-simulation.xml'
-                   % (nam_simulation_exe, MOL0, MOL1))
+                   % (nam_simulation_exe, MOL[0], MOL[1]))
         if self.run_in_background.get():
             p = subprocess.Popen(" nohup %s" % command, shell=True)
             global JOBPID
@@ -1956,7 +1876,7 @@ quit
         self.xyz_ofile = 'trajectory-%d.xyz' % self.traj_index_n.get()
         command = ('%s/xyz_trajectory -mol0 %s-atoms.pqrxml '
                    '-mol1 %s-atoms.pqrxml -trajf %s > %s'
-                   % (self.bd_path.get(), MOL0, MOL1, ofile, self.xyz_ofile))
+                   % (self.bd_path.get(), MOL[0], MOL[1], ofile, self.xyz_ofile))
         print("::: Converting %s to XYZ trajectory ..." % ofile)
         rc = self.runCmd(command)
         if rc == 0:
@@ -1983,7 +1903,7 @@ quit
             print("::: Error: %s" % e)
         return
 
-    def check_exe(self, command):
+    def checkExe(self, command):
         """Check if command exists and is executable."""
         if os.path.isfile(command) and os.access(command, os.X_OK):
             is_exe = True
