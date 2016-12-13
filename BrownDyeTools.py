@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-12 14:18:46
+# Last modified: 2016-12-13 08:43:38
 #
 '''BrownDye Tools plugin for Pymol
 
@@ -48,6 +48,7 @@ MOL = ['mol0', 'mol1']
 APBS_EXE = 'apbs'
 PDB2PQR_EXE = 'pdb2pqr'
 BDTOP_EXE = 'bd_top'
+JOBPID = None
 
 pqr_defaults = {
     'pqr_ff': 'parse',
@@ -105,14 +106,11 @@ if "PDB2PQR_PATH" in os.environ: PDB2PQR_PATH = os.environ["PDB2PQR_PATH"]
 if "APBS_PATH" in os.environ: APBS_PATH = os.environ["APBS_PATH"]
 if "BD_PATH" in os.environ: BD_PATH = os.environ["BD_PATH"]
 
-JOBPID = None
-
 def __init__(self):
     """BrownDyeTools plugin for PyMol."""
     self.menuBar.addmenuitem('Plugin', 'command',
                              'BrownDye Tools', label='BrownDye Tools',
                              command=lambda s=self: BDPlugin(s))
-
 
 class DummyPymol(object):
     """Dummy pymol class when running standalone GUI."""
@@ -530,7 +528,6 @@ class BDPlugin(object):
                                      validate={'validator': 'integer', 'min': 0},
                                      entry_textvariable=self.dime[1][2],
                                      entry_width=5)
-
         cglen1_0_ent = Pmw.EntryField(grp_grids, labelpos='w',
                                       label_text='cglen: ',
                                       validate={'validator': 'real', 'min': 0.0},
@@ -561,7 +558,6 @@ class BDPlugin(object):
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.fglen[1][2],
                                       entry_width=8)
-
         get_size1_but = Tkinter.Button(grp_grids,
                                        text="Set grid",
                                        command=lambda: self.getSizemol(1))
@@ -641,7 +637,6 @@ class BDPlugin(object):
                                       validate={'validator': 'real', 'min': 0.0},
                                       entry_textvariable=self.apbs_ion_radius[1],
                                       entry_width=5)
-
         sdens_ent = Pmw.EntryField(grp_apbs, labelpos='w',
                                    label_text='Surf. sphere density: ',
                                    validate={'validator': 'real', 'min': 0.0},
@@ -673,7 +668,6 @@ class BDPlugin(object):
                                   menubutton_textvariable=self.apbs_srfm,
                                   menubutton_width=5,
                                   items=['smol', 'mol', 'spl2', 'spl4'])
-
         run_apbs_but = Tkinter.Button(page,
                                       text="Run APBS to generate grids",
                                       command=self.runAPBS)
@@ -1119,7 +1113,7 @@ class BDPlugin(object):
         data['psize'] = psize_config
         data['apbs'] = apbs_config
         data['browndye'] = bd_config
-        data['bdtools'] = bdtools_config
+        data['_bdtools'] = bdtools_config
         with open(configf, 'w') as f:
             json.dump(data, f, indent=4, sort_keys=True)
         return
@@ -1230,7 +1224,8 @@ class BDPlugin(object):
             use_propka = ''
         if self.pqr_use_propka.get():
             assign_only = ''
-            use_propka = '--ph-calc-method=propka --with-ph=%s --drop-water' % self.pqr_ph.get()
+            use_propka = ('--ph-calc-method=propka --with-ph=%s --drop-water'
+                          % self.pqr_ph.get())
             self.pqr_ff.set('parse')
             print("::: Using PROPKA to assign protonation states and "
                   "optimizing the structure.\n"
@@ -1636,7 +1631,8 @@ quit
         command = ('%s/make_rxn_pairs '
                    '-nonred -mol0 %s-atoms.pqrxml -mol1 %s-atoms.pqrxml '
                    '-ctypes %s  -dist %f > %s-%s-rxn-pairs.xml'
-                   % (self.bd_path.get(), MOL[0], MOL[1], self.contacts_f.get(),
+                   % (self.bd_path.get(), MOL[0], MOL[1],
+                      self.contacts_f.get(),
                       self.rxn_distance.get(), MOL[0], MOL[1]))
         if DEBUG > 2: print(command)
         print("::: Running make_rxn_pairs ...")
@@ -1648,7 +1644,8 @@ quit
         command =('%s/make_rxn_file '
                   '-pairs %s-%s-rxn-pairs.xml -distance %f '
                   ' -nneeded %d > %s-%s-rxns.xml'
-                  % (self.bd_path.get(), MOL[0], MOL[1], self.rxn_distance.get(),
+                  % (self.bd_path.get(), MOL[0], MOL[1],
+                     self.rxn_distance.get(),
                      self.npairs.get(), MOL[0], MOL[1]))
         if DEBUG > 2: print(command)
         print("::: Running make_rxn_file ...")
@@ -1706,7 +1703,8 @@ quit
 """
         bdtop_input = 'input.xml'
         if self.debyel[0].get() == 0.0:
-            print("::: Invalid Debye length (%s)!" % self.debyel[0].get())
+            print("::: Invalid Debye length (%s)!" %
+                  self.debyel[0].get())
             print("::: Acquire Debye length first")
             return
         with open(bdtop_input, "w") as f:
@@ -1876,7 +1874,8 @@ quit
         self.xyz_ofile = 'trajectory-%d.xyz' % self.traj_index_n.get()
         command = ('%s/xyz_trajectory -mol0 %s-atoms.pqrxml '
                    '-mol1 %s-atoms.pqrxml -trajf %s > %s'
-                   % (self.bd_path.get(), MOL[0], MOL[1], ofile, self.xyz_ofile))
+                   % (self.bd_path.get(), MOL[0], MOL[1], ofile,
+                      self.xyz_ofile))
         print("::: Converting %s to XYZ trajectory ..." % ofile)
         rc = self.runCmd(command)
         if rc == 0:
