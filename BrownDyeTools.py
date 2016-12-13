@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-13 12:37:19
+# Last modified: 2016-12-13 14:25:33
 #
 # pylint: disable=no-member,import-error,missing-docstring,invalid-name,multiple-statements
 #
@@ -293,10 +293,10 @@ class BDPlugin(object):
                                 % __version__),
                           background='black', foreground='white')
         w.pack(expand=1, fill='both', **pref)
-
         # create a notebook
         self.notebook = Pmw.NoteBook(self.dialog.interior())
         self.notebook.pack(fill='both', expand=1, **pref)
+        self.balloon = Pmw.Balloon(self.dialog.interior())
 
         #####################
         # Tab: Configuration
@@ -312,6 +312,7 @@ class BDPlugin(object):
                                           entry_textvariable=self.projectDir)
         project_path_but = Tkinter.Button(config, text='Create',
                                           command=self.createProjectDir)
+        self.balloon.bind(project_path_but, 'Create a new project directory')
         label = Tkinter.Label(config, text='or')
         project_path_b_but = Tkinter.Button(config, text='Browse ...',
                                             command=self.browseProjectDir)
@@ -342,8 +343,10 @@ class BDPlugin(object):
                                     command=self.getConfigPath)
         load_config_but = Tkinter.Button(config, text='Load configuration',
                                          command=self.loadConfig)
+        self.balloon.bind(load_config_but, 'Load calculation configuration from a file')
         save_config_but = Tkinter.Button(config, text='Save configuration',
                                          command=self.saveConfig)
+        self.balloon.bind(save_config_but, 'Save calculation configuration to a file')
 
         # arrange widgets using grid
         project_path_ent.grid(sticky='we', row=1, column=0, **pref)
@@ -1985,7 +1988,8 @@ class RunThread(Thread):
                              stderr=subprocess.PIPE, shell=True, bufsize=1)
         global JOBPID
         JOBPID = p.pid
-        if DEBUG > 1: print('JOBPID: %d' % JOBPID)
+        self.pid = p.pid
+        if DEBUG > 1: print('JOBPID: %d' % self.pid)
         for line in iter(p.stdout.readline, ''):
             print(line,)
             self.page.insert('end', "%s" % line)
@@ -1999,6 +2003,9 @@ class RunThread(Thread):
             print("::: Thread error!")
         return
 
+    def kill(self):
+        os.system('kill -9 %d' % self.pid)
+        return
 
 class MonitorThread(Thread):
     """Monitor runing BrownDye job and print out progress information."""
@@ -2057,12 +2064,6 @@ class MonitorThread(Thread):
         self.page.insert('end', "::: BrownDye simulation finished\n")
         return
 
-class StopThread(Thread):
-    """Kill running thread."""
-    def __init__(self, mythread):
-        self.pid = mythread.pid
-        os.system('kill -9 %d' % self.pid)
-        return
 
 class Psize(object):
     """Calculate grid size dimensions for a pqr molecule.
