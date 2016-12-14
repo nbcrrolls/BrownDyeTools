@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-13 14:25:33
+# Last modified: 2016-12-14 14:17:46
 #
 # pylint: disable=no-member,import-error,missing-docstring,invalid-name,multiple-statements
 #
@@ -42,7 +42,7 @@ from threading import Thread
 from lxml import etree
 #import importlib
 
-DEBUG = 0
+DEBUG = 5
 
 __version__ = '0.5.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
@@ -56,6 +56,7 @@ MOL = ['mol0', 'mol1']
 APBS_EXE = 'apbs'
 PDB2PQR_EXE = 'pdb2pqr'
 BDTOP_EXE = 'bd_top'
+NAM_SIMULATION_EXE = 'nam_simulation'
 JOBPID = None
 
 PQR_DEFAULTS = {
@@ -160,7 +161,6 @@ class BDPlugin(object):
                                  title='BrownDyeTools Plugin for PyMOL',
                                  command=self.exitBDPlugin)
         Pmw.setbusycursorattributes(self.dialog.component('hull'))
-
         self.projectDir = Tkinter.StringVar()
         self.projectDir.set(self.getProjectDir())
         self.pdb2pqr_path = Tkinter.StringVar()
@@ -296,6 +296,16 @@ class BDPlugin(object):
         # create a notebook
         self.notebook = Pmw.NoteBook(self.dialog.interior())
         self.notebook.pack(fill='both', expand=1, **pref)
+        self.status_bar = Pmw.MessageBar(self.dialog.interior(), entry_width=40,
+                                         entry_relief='sunken',
+                                         labelpos='w', label_text='Status: ')
+
+        self.status_bar.pack(fill='both', expand=1, **pref)
+        self.status_bar.message('state', 'Idle ...')
+        #self.status_msg = Tkinter.Message(self.dialog.interior(),
+        #                                  textvariable = self.maxnsteps, width=100,
+        #                                  relief='sunken')
+        #self.status_msg.pack(fill='both', expand=1, **pref)
         self.balloon = Pmw.Balloon(self.dialog.interior())
 
         #####################
@@ -816,9 +826,9 @@ class BDPlugin(object):
         prep_bd_but = Tkinter.Button(page, text="Generate BrownDye input files",
                                      command=self.prepBD)
 
-        self.status_bar = Pmw.MessageBar(page, entry_width=20, entry_relief='sunken',
-                                         labelpos='w', label_text='Status:')
-        self.status_bar.message('state', '')
+        #self.status_bar = Pmw.MessageBar(page, entry_width=20, entry_relief='sunken',
+        #                                 labelpos='w', label_text='Status:')
+        #self.status_bar.message('state', '')
 
         sdie_ent.grid(sticky='we', row=1, column=0, **pref)
         debyel_ent.grid(sticky='we', row=2, column=0, **pref)
@@ -837,7 +847,7 @@ class BDPlugin(object):
         maxnsteps_ent.grid(sticky='we', row=8, column=0, **pref)
         nsteps_per_output_ent.grid(sticky='we', row=8, column=1, **pref)
         prep_bd_but.grid(sticky='e', row=9, column=0, **pref)
-        self.status_bar.grid(sticky='e', row=10, column=0, **pref)
+        #self.status_bar.grid(sticky='e', row=10, column=0, **pref)
         grp_bdinput.columnconfigure(0, weight=1)
         grp_bdinput.columnconfigure(1, weight=1)
         page.columnconfigure(0, weight=1)
@@ -1229,6 +1239,7 @@ class BDPlugin(object):
                     e = sys.exc_info()[0]
                     print(e)
                     print("::: Creating of %s failed!" % target_f)
+                    print("::: The pqr file already exists.")
                     return
             else:
                 pymol.cmd.save(filename=target_f,
@@ -1255,22 +1266,23 @@ class BDPlugin(object):
                        (pdb2pqr_exe, pqr_options, i, i))
             if DEBUG > 2: print(command)
             print("::: Running pdb2pqr on %s ..." % i)
+            self.status_bar.message('state', 'Busy: Running pdb2pqr. Please wait ...')
             rc = self.runCmd(command)
             if rc == 0:
                 print("::: Done.")
             else:
                 print("::: Command failed: %s" % command)
-
+        self.status_bar.message('state', 'Idle')
         return
 
-    def runAPBS(self):
+    def runAPBS2(self):
         """Run APBS calculations on molecule 0 and molecule 1"""
         apbs_template = """
 # APBS template for BrownDye grids
 read
     mol pqr %s
 end
-elec 
+elec
     mg-auto
     dime %d %d %d
     cglen %f %f %f
@@ -1296,7 +1308,7 @@ elec
 end
 print elecEnergy 1 end
 quit
-"""
+        """
         apbs_exe = '%s/%s' % (self.apbs_path.get(), APBS_EXE)
         if not self.checkExe(apbs_exe): return
         for i in range(2):
@@ -1343,6 +1355,82 @@ quit
                 print("::: Done.")
             else:
                 print("::: Failed: %s" % command)
+        return
+
+    def runAPBS(self):
+        """Run APBS calculations on molecule 0 and molecule 1"""
+        apbs_template = """
+# APBS template for BrownDye grids
+read
+    mol pqr %s
+end
+elec 
+    mg-auto
+    dime %d %d %d
+    cglen %f %f %f
+    fglen %f %f %f
+    cgcent mol 1
+    fgcent mol 1
+    mol 1
+    %s # lpbe/npbe
+    bcfl %s # sdh
+    ion charge %d conc %f radius %f
+    ion charge %d conc %f radius %f
+    pdie %f
+    sdie %f
+    chgm %s # spl2
+    sdens %f
+    srfm %s # smol
+    srad %f
+    swin %f
+    temp %f
+    calcenergy total
+    calcforce no
+    write pot dx %s
+end
+print elecEnergy 1 end
+quit
+        """
+        apbs_exe = '%s/%s' % (self.apbs_path.get(), APBS_EXE)
+        if not self.checkExe(apbs_exe): return
+        for i in range(2):
+            pqr_filename = '%s.pqr' % MOL[i]
+            grid_points = [self.dime[i][x].get() for x in range(3)]
+            cglen = [self.cglen[i][x].get() for x in range(3)]
+            fglen = [self.fglen[i][x].get() for x in range(3)]
+            if grid_points[0] == 0 or grid_points[1] == 0 or grid_points[2] == 0:
+                print("::: %s - no grid points defined!" % MOL[i])
+                return
+            dx_filename = MOL[i]
+            fout = '%s.in' % MOL[i]
+            with open(fout, "w") as f:
+                f.write((apbs_template %
+                         (pqr_filename,
+                          grid_points[0], grid_points[1], grid_points[2],
+                          cglen[0], cglen[1], cglen[2],
+                          fglen[0], fglen[1], fglen[2],
+                          self.apbs_mode.get(), self.apbs_bcfl.get(),
+                          self.apbs_ion_charge[0].get(),
+                          self.apbs_ion_conc[0].get(), self.apbs_ion_radius[0].get(),
+                          self.apbs_ion_charge[1].get(),
+                          self.apbs_ion_conc[1].get(), self.apbs_ion_radius[1].get(),
+                          self.apbs_pdie.get(),
+                          self.apbs_sdie.get(),
+                          self.apbs_chgm.get(), self.apbs_sdens.get(),
+                          self.apbs_srfm.get(), self.apbs_srad.get(),
+                          self.apbs_swin.get(), self.apbs_temp.get(),
+                          dx_filename)))
+
+            command = 'MCSH_HOME=. %s %s.in' % (apbs_exe, MOL[i])
+            if DEBUG > 2:
+                print(command)
+                print(grid_points)
+                print(cglen, fglen)
+            print("::: Prepping apbs run for %s ... " % MOL[i])
+            gmem = 200.0 * grid_points[0] * grid_points[1] * grid_points[2] / 1024 / 1024
+            print("::: Estimated memory requirements: %.3f MB" % gmem)
+        thread = APBSRunner(apbs_exe, self.projectDir.get(), self.status_bar)
+        thread.start()
         return
 
     def getDebyeLength(self):
@@ -1651,6 +1739,7 @@ quit
                       self.rxn_distance.get(), MOL[0], MOL[1]))
         if DEBUG > 2: print(command)
         print("::: Running make_rxn_pairs ...")
+        self.status_bar.message('state', 'Busy: Processing rxn criteria. Please wait ...')
         rc = self.runCmd(command)
         if rc == 0:
             print("::: Done.")
@@ -1669,6 +1758,7 @@ quit
             print("::: Done.")
         else:
             print("::: Failed: %s" % command)
+        self.status_bar.message('state', 'Idle')
         return
 
     def prepBD(self):
@@ -1744,8 +1834,7 @@ quit
                    % (self.bd_path.get(), BDTOP_EXE, bdtop_input))
         if DEBUG > 2: print(command)
         print("::: Running bd_top (this will take a couple of minutes) ...")
-        self.status_bar.message('state', ' Starting bd_top ...')
-        thread = RunBDTopThread(self, command)
+        thread = BDTopRunner(self, command)
         thread.start()
         return
 
@@ -1757,7 +1846,8 @@ quit
     def runBD(self):
         """Start BrownDye simulation either in foreground or background."""
         print("::: Starting BrownDye simulation ...")
-        nam_simulation_exe = '%s/nam_simulation' % self.bd_path.get()
+        nam_simulation_exe = ('%s/%s' %
+                              (self.bd_path.get(), NAM_SIMULATION_EXE))
         if not self.checkExe(nam_simulation_exe): return
         command = ('%s %s-%s-simulation.xml'
                    % (nam_simulation_exe, MOL[0], MOL[1]))
@@ -1770,7 +1860,7 @@ quit
                 'end', "::: Starting BrownDye simulation in background.\n")
             self.logtxt_ent.insert('end', "::: Job PID: %d \n" % JOBPID)
         else:
-            thread = RunThread(self, command)
+            thread = BDRunner(self, command)
             thread.start()
             self.notebook.selectpage('BD simulation')
             self.logtxt_ent.insert('end', "::: Starting BrownDye simulation ...\n")
@@ -1833,6 +1923,7 @@ quit
                    '-index %s.index.xml -srxn association'
                    % (self.bd_path.get(), self.traj_f.get(),
                       traj_f_base))
+        self.status_bar.message('state', 'Busy: Processing trajectory. Please wait ...')
         p = subprocess.Popen(command, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, shell=True)
         # p.wait()
@@ -1860,6 +1951,7 @@ quit
                 # % (i, j[0].text.strip()))
                 self.msg_ent.insert('end', "%s" % logline)
                 self.dialog_idx.insert('end', i)
+        self.status_bar.message('state', 'Idle')
         return
 
     def selectTrajIndex(self, result):
@@ -1875,6 +1967,7 @@ quit
 
     def convertTrajectoryToXYZ(self):
         """Convert XML trajectory to XYZ format."""
+        self.status_bar.message('state', 'Busy: Processing trajectory. Please wait ...')
         traj_f_base = self.traj_f.get().strip('.xml')
         ofile = 'trajectory-%d.xml' % self.traj_index_n.get()
         command = ('%s/process_trajectories -traj %s '
@@ -1894,12 +1987,14 @@ quit
                    % (self.bd_path.get(), MOL[0], MOL[1], ofile,
                       self.xyz_ofile))
         print("::: Converting %s to XYZ trajectory ..." % ofile)
+        self.status_bar.message('state', 'Idleddd')
         rc = self.runCmd(command)
         if rc == 0:
             print("::: Done.")
         else:
             print("::: Failed: %s" % command)
             return
+        self.status_bar.message('state', 'Idle -/-')
         return
 
     def convertTrajectoryToPQR(self):
@@ -1910,6 +2005,7 @@ quit
         """Load XYZ trajectory to pymol."""
         xyz_trajectory_object = 'trajectory-%d' % self.traj_index_n.get()
         print("::: Loading XYZ trajectory ...")
+        self.status_bar.message('state', 'Busy: Loading trajectory. Please wait ...')
         try:
             pymol.cmd.load(self.xyz_ofile, xyz_trajectory_object)
             print("::: Done.")
@@ -1917,6 +2013,7 @@ quit
             e = sys.exc_info()[0]
             print("::: Loading xyz trajectory failed!")
             print("::: Error: %s" % e)
+        self.status_bar.message('state', 'Idle')
         return
 
     def checkExe(self, command):
@@ -1941,8 +2038,51 @@ quit
         print("Done.")
         return
 
+class APBSRunner(Thread):
+    """Run APBS in a thread."""
+    def __init__(self, apbs_exe, work_dir, status_bar):
+        Thread.__init__(self)
+        self.apbs_exe = apbs_exe
+        self.status_bar = status_bar
+        self.work_dir = work_dir
+        if DEBUG > 2: print("Work directory: %s" % (self.work_dir))
 
-class RunBDTopThread(Thread):
+    def run(self):
+        print("::: Project directory: %s" % (self.work_dir))
+        os.chdir(self.work_dir)
+        for i in range(2):
+            command = 'MCSH_HOME=. %s %s.in' % (self.apbs_exe, MOL[i])
+            if DEBUG > 2: print(command)
+            self.status_bar.message('state', ('Busy: Running apbs on %s. Please wait ...' % MOL[i]))
+            p = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, shell=True, bufsize=1)
+            global JOBPID
+            JOBPID = p.pid
+            self.pid = p.pid
+            if DEBUG > 1: print('JOBPID: %d' % self.pid)
+            for line in iter(p.stdout.readline, ''):
+                print(line)
+                #self.page.insert('end', "%s" % line)
+            stdout, stderr = p.communicate()
+            self.outlog = stdout
+            self.status = p.returncode
+            self.status_bar.message('state', ('Finished apbs on %s.' % MOL[i]))
+            if self.status == 0:
+                iomc = '%s-io.mc' % MOL[i]
+                if os.path.isfile(iomc): os.remove(iomc)
+                shutil.copyfile('io.mc', iomc)
+                print("::: Done.")
+            else:
+                print("::: Failed: %s" % command)
+        self.status_bar.message('state', 'Idle')
+        return
+
+    def kill(self):
+        os.system('kill -9 %d' % self.pid)
+        return
+
+
+class BDTopRunner(Thread):
     """bd_top thread management class."""
     def __init__(self, my_inst, command):
         Thread.__init__(self)
@@ -1952,27 +2092,28 @@ class RunBDTopThread(Thread):
         return
 
     def run(self):
-        self.status_bar.message('state', ' Running bd_top ...')
+        self.status_bar.message('state', 'Busy: Running bd_top. Please wait ...')
         p = subprocess.Popen(self.command, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, shell=True)
         stdout, stderr = p.communicate()
         self.outlog = stdout
         self.status = p.returncode
         try:
-            self.status_bar.message('state', ' Finished bd_top ...')
+            self.status_bar.message('state', 'Finished bd_top ...')
             time.sleep(3)
-            self.status_bar.message('state', ' Done.')
+            self.status_bar.message('state', 'Idle')
             print(stdout, stderr, p.returncode)
         except:
             print("::: Thread error!")
         return
 
 
-class RunThread(Thread):
-    """Thread management class."""
+class BDRunner(Thread):
+    """BD thread management class."""
     def __init__(self, my_inst, command):
         Thread.__init__(self)
         self.page = my_inst.logtxt_ent
+        self.status_bar = my_inst.status_bar
         self.command = command
         if DEBUG > 2: print("%s" % (command))
         self.work_dir = my_inst.projectDir.get()
@@ -1984,6 +2125,7 @@ class RunThread(Thread):
         # current_dir = os.getcwd()
         os.chdir(self.work_dir)
         #self.page.yview('moveto', 1.0)
+        self.status_bar.message('state', 'Busy: Running simulation. Please wait ...')
         p = subprocess.Popen(self.command, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, shell=True, bufsize=1)
         global JOBPID
@@ -1996,6 +2138,7 @@ class RunThread(Thread):
         stdout, stderr = p.communicate()
         self.outlog = stdout
         self.status = p.returncode
+        self.status_bar.message('state', 'Idle')
         try:
             self.page.insert('end', "%s %s" % (stdout, stderr))
             # self.page.yview('moveto', 1.0)
