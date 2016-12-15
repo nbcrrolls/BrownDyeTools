@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-14 14:17:46
+# Last modified: 2016-12-15 12:42:39
 #
 # pylint: disable=no-member,import-error,missing-docstring,invalid-name,multiple-statements
 #
@@ -42,9 +42,9 @@ from threading import Thread
 from lxml import etree
 #import importlib
 
-DEBUG = 5
+DEBUG = 0
 
-__version__ = '0.5.0'
+__version__ = '0.6.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
 
 PDB2PQR_PATH = None
@@ -281,7 +281,6 @@ class BDPlugin(object):
         self.traj_f.set('traj0.xml')
         self.traj_index_n = Tkinter.IntVar()
         self.traj_index_n.set(1)
-
         #######################################################################
         # Main code
         pref = dict(padx=5, pady=5)
@@ -301,11 +300,7 @@ class BDPlugin(object):
                                          labelpos='w', label_text='Status: ')
 
         self.status_bar.pack(fill='both', expand=1, **pref)
-        self.status_bar.message('state', 'Idle ...')
-        #self.status_msg = Tkinter.Message(self.dialog.interior(),
-        #                                  textvariable = self.maxnsteps, width=100,
-        #                                  relief='sunken')
-        #self.status_msg.pack(fill='both', expand=1, **pref)
+        self.status_bar.message('state', 'Idle')
         self.balloon = Pmw.Balloon(self.dialog.interior())
 
         #####################
@@ -1017,10 +1012,10 @@ class BDPlugin(object):
         return
 
     def runCmd(self, command):
-        """Generic wrapper for running arbitrary shell commands."""
+        """Generic wrapper for running shell commands."""
         p = subprocess.Popen(command, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, shell=True)
-        p.wait()
+        #p.wait()
         stdout, stderr = p.communicate()
         if DEBUG > 2: print("returncode = %d" % p.returncode)
         if DEBUG > 2: print("stdout:\n%s\n" % stdout)
@@ -1267,6 +1262,7 @@ class BDPlugin(object):
             if DEBUG > 2: print(command)
             print("::: Running pdb2pqr on %s ..." % i)
             self.status_bar.message('state', 'Busy: Running pdb2pqr. Please wait ...')
+            self.dialog.update()
             rc = self.runCmd(command)
             if rc == 0:
                 print("::: Done.")
@@ -1740,6 +1736,7 @@ quit
         if DEBUG > 2: print(command)
         print("::: Running make_rxn_pairs ...")
         self.status_bar.message('state', 'Busy: Processing rxn criteria. Please wait ...')
+        self.dialog.update()
         rc = self.runCmd(command)
         if rc == 0:
             print("::: Done.")
@@ -1924,9 +1921,9 @@ quit
                    % (self.bd_path.get(), self.traj_f.get(),
                       traj_f_base))
         self.status_bar.message('state', 'Busy: Processing trajectory. Please wait ...')
+        self.dialog.update()
         p = subprocess.Popen(command, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, shell=True)
-        # p.wait()
         stdout, stderr = p.communicate()
         if p.returncode > 0:
             print("::: Error processing %s trajectory file." % self.traj_f.get())
@@ -1967,7 +1964,6 @@ quit
 
     def convertTrajectoryToXYZ(self):
         """Convert XML trajectory to XYZ format."""
-        self.status_bar.message('state', 'Busy: Processing trajectory. Please wait ...')
         traj_f_base = self.traj_f.get().strip('.xml')
         ofile = 'trajectory-%d.xml' % self.traj_index_n.get()
         command = ('%s/process_trajectories -traj %s '
@@ -1987,14 +1983,15 @@ quit
                    % (self.bd_path.get(), MOL[0], MOL[1], ofile,
                       self.xyz_ofile))
         print("::: Converting %s to XYZ trajectory ..." % ofile)
-        self.status_bar.message('state', 'Idleddd')
+        self.status_bar.message('state', 'Busy: Processing trajectory. Please wait ...')
+        self.dialog.update()
         rc = self.runCmd(command)
         if rc == 0:
             print("::: Done.")
         else:
             print("::: Failed: %s" % command)
             return
-        self.status_bar.message('state', 'Idle -/-')
+        self.status_bar.message('state', 'Idle')
         return
 
     def convertTrajectoryToPQR(self):
@@ -2006,6 +2003,7 @@ quit
         xyz_trajectory_object = 'trajectory-%d' % self.traj_index_n.get()
         print("::: Loading XYZ trajectory ...")
         self.status_bar.message('state', 'Busy: Loading trajectory. Please wait ...')
+        self.dialog.update()
         try:
             pymol.cmd.load(self.xyz_ofile, xyz_trajectory_object)
             print("::: Done.")
