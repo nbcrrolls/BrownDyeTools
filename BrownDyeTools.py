@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2016-12-15 12:46:25
+# Last modified: 2017-06-25 13:40:51
 #
 # pylint: disable=no-member,import-error,missing-docstring,invalid-name,multiple-statements
 #
@@ -13,7 +13,7 @@ Author : Robert Konecny <rok@ucsd.edu>
 Release date: November 2016
 License: GNU General Public License version 3
 
-Copyright 2016 Robert Konecny, NBCR
+Copyright 2016-17 Robert Konecny, NBCR
 
 This is free software, licensed under the GNU General Public License
 version 3. You should have received a copy of the GNU General Public
@@ -286,7 +286,7 @@ class BDPlugin(object):
         pref = dict(padx=5, pady=5)
         w = Tkinter.Label(self.dialog.interior(),
                           text=('\nBrownDye Tools for PyMOL\n'
-                                'Version %s, NBCR 2016\n\n'
+                                'Version %s, NBCR 2016-17\n\n'
                                 'Plugin for setting up and running '
                                 'Brownian dynamics simulations with BrownDye.'
                                 % __version__),
@@ -973,7 +973,7 @@ class BDPlugin(object):
             'This software is released under the terms of GNU GPL3 license.\n'
             'For more details please see the accompanying documentation.\n\n'
 
-            '(c) 2016 National Biomedical Computation Resource\n'
+            '(c) 2016-17 National Biomedical Computation Resource\n'
             'http://nbcr.ucsd.edu/')
 
         label_about = Tkinter.Label(grp_about, text=about_plugin)
