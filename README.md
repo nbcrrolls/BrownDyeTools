@@ -103,4 +103,4 @@ Currently only Linux OS is supported. MacOS is untested.
 This software is released under the terms of GNU GPL3 license.
 For more details please see the accompanying documentation.
 
-(c) 2016-2017 [National Biomedical Computation Resource](http://nbcr.ucsd.edu)
+(c) 2016-17 [National Biomedical Computation Resource](http://nbcr.ucsd.edu)
