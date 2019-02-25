@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2017-06-25 13:40:51
+# Last modified: 2019-02-25 13:26:03
 #
 # pylint: disable=no-member,import-error,missing-docstring,invalid-name,multiple-statements
 #
@@ -13,7 +13,7 @@ Author : Robert Konecny <rok@ucsd.edu>
 Release date: November 2016
 License: GNU General Public License version 3
 
-Copyright 2016-17 Robert Konecny, NBCR
+Copyright 2016-19 Robert Konecny, NBCR
 
 This is free software, licensed under the GNU General Public License
 version 3. You should have received a copy of the GNU General Public
@@ -39,12 +39,13 @@ import Tkinter
 import Pmw
 import tkFileDialog
 from threading import Thread
-from lxml import etree
+#from lxml import etree
+from xml.etree import ElementTree as etree
 #import importlib
 
 DEBUG = 0
 
-__version__ = '0.6.0'
+__version__ = '1.0.0'
 __author__ = 'Robert Konecny <rok@ucsd.edu>'
 
 PDB2PQR_PATH = None
@@ -108,7 +109,7 @@ BD_DEFAULTS = {
 
 if DEBUG > 0:
     PDB2PQR_PATH = '/opt/pdb2pqr-linux-bin64-2.1.0/'
-    APBS_PATH = '/export1/Builds/SandBox-2016.10.11-14.05/bin/'
+    APBS_PATH = '/export1/Builds/SandBox-2018-03-08T15.28.17/bin/'
     BD_PATH = '/home/rok/BrownianDynamics/browndye-2016.4.14/bin/'
 
 if "PDB2PQR_PATH" in os.environ: PDB2PQR_PATH = os.environ["PDB2PQR_PATH"]
@@ -286,7 +287,7 @@ class BDPlugin(object):
         pref = dict(padx=5, pady=5)
         w = Tkinter.Label(self.dialog.interior(),
                           text=('\nBrownDye Tools for PyMOL\n'
-                                'Version %s, NBCR 2016-17\n\n'
+                                'Version %s, NBCR 2016-19\n\n'
                                 'Plugin for setting up and running '
                                 'Brownian dynamics simulations with BrownDye.'
                                 % __version__),
@@ -973,7 +974,7 @@ class BDPlugin(object):
             'This software is released under the terms of GNU GPL3 license.\n'
             'For more details please see the accompanying documentation.\n\n'
 
-            '(c) 2016-17 National Biomedical Computation Resource\n'
+            '(c) 2016-19 National Biomedical Computation Resource\n'
             'http://nbcr.ucsd.edu/')
 
         label_about = Tkinter.Label(grp_about, text=about_plugin)
@@ -1929,7 +1930,7 @@ quit
             print("::: Error processing %s trajectory file." % self.traj_f.get())
             return
         t = etree.fromstring(stdout)
-        tr = t.xpath('//trajectory/number')
+        tr = t.findall('.//trajectory/number')
         traj_index = [int(tr[x].text.strip()) for x in range(len(tr))]
         logline = (
             '%d association event trajectories found (index numbers: %s)\n'
@@ -1942,7 +1943,7 @@ quit
                 d = etree.parse(f)
                 # xpath_str = 'trajectory[n-traj=" %d "]//s/n' % i
                 xpath_str = 'trajectory[n-traj=" %d "]//s' % i
-                j = d.xpath(xpath_str)
+                j = d.findall(xpath_str)
                 logline = ('trajectory %d: approx. %s frames\n'
                            % (i, len(j) * 20))
                 # % (i, j[0].text.strip()))
@@ -2178,11 +2179,11 @@ class MonitorThread(Thread):
             if results_fileok:
                 with open(results_file, 'r') as f:
                     results = etree.parse(f)
-                    ntraj = results.xpath('//reactions/n-trajectories')[0].text.strip()
-                    stuck = results.xpath('//reactions/stuck')[0].text.strip()
-                    escaped = results.xpath('//reactions/escaped')[0].text.strip()
-                    ncompleted = results.xpath('//reactions/completed/name')[0].text.strip()
-                    completed = results.xpath('//reactions/completed/n')[0].text.strip()
+                    ntraj = results.findall('.//reactions/n-trajectories')[0].text.strip()
+                    stuck = results.findall('.//reactions/stuck')[0].text.strip()
+                    escaped = results.findall('.//reactions/escaped')[0].text.strip()
+                    ncompleted = results.findall('.//reactions/completed/name')[0].text.strip()
+                    completed = results.findall('.//reactions/completed/n')[0].text.strip()
                     mymsg = '%s out of %d' % (ntraj, self.totntraj)
                     self.msgbar1.message('state', mymsg)
                     mymsg = '%s / %s / %s' % (completed, escaped, stuck)
@@ -2195,8 +2196,8 @@ class MonitorThread(Thread):
                 stdout, stderr = p.communicate()
                 try:
                     rates = etree.fromstring(stdout)
-                    rate_constant = rates.xpath('//rate-constant/mean')[0].text.strip()
-                    rxn_probability = rates.xpath('//reaction-probability/mean')[0].text.strip()
+                    rate_constant = rates.findall('.//rate-constant/mean')[0].text.strip()
+                    rxn_probability = rates.findall('.//reaction-probability/mean')[0].text.strip()
                     mymsg = ('%s / %s' % (rate_constant, rxn_probability))
                     self.msgbar3.message('state', mymsg)
                 except XMLSyntaxError:
