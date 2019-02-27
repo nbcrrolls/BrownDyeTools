@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2019-02-26 19:08:58
+# Last modified: 2019-02-26 19:41:38
 #
 # pylint: disable=no-member,import-error,missing-docstring,invalid-name,multiple-statements
 #
@@ -26,38 +26,37 @@ from __future__ import print_function
 from __future__ import absolute_import
 
 import sys
+import os
+import subprocess
 if sys.version_info[0] < 3:
     #import urllib2
     #from urllib2 import URLError, HTTPError
     #from urllib import quote
     #from idlelib.TreeWidget import TreeItem, TreeNode
-    from Tkinter import *
+    #from Tkinter import *
     import Tkinter
-    import tkSimpleDialog
+    #import tkSimpleDialog
     import tkFileDialog
-    import tkMessageBox
-    import tkColorChooser
-    import Queue
-    import ttk
-    from StringIO import StringIO
+    #import tkMessageBox
+    #import tkColorChooser
+    #import Queue
+    #import ttk
+    #from StringIO import StringIO
 else:
     #import urllib.request as urllib2
     #from urllib.error import URLError, HTTPError
     #from urllib.parse import quote
     #from idlelib.tree import TreeItem, TreeNode
-    from tkinter import *
+    #from tkinter import *
     import tkinter as Tkinter
-    from tkinter import simpledialog as tkSimpleDialog
+    #from tkinter import simpledialog as tkSimpleDialog
     from tkinter import filedialog as tkFileDialog
-    import tkinter.messagebox as tkMessageBox
-    import tkinter.colorchooser as tkColorChooser
-    import queue as Queue
-    import tkinter.ttk as ttk
-    from io import StringIO
+    #import tkinter.messagebox as tkMessageBox
+    #import tkinter.colorchooser as tkColorChooser
+    #import queue as Queue
+    #import tkinter.ttk as ttk
+    #from io import StringIO
 
-import os
-import subprocess
-import sys
 #import string
 import re
 ##import filecmp
@@ -69,12 +68,12 @@ import datetime
 ##import tkSimpleDialog
 ##import tkMessageBox
 #import Tkinter
-import Pmw
 #import tkFileDialog
 from threading import Thread
 ##from lxml import etree
 from xml.etree import ElementTree as etree
 ##import importlib
+import Pmw
 
 DEBUG = 0
 
@@ -1397,8 +1396,9 @@ quit
         return
 
     def runAPBS(self):
-        """Run APBS calculations on molecule 0 and molecule 1."""
-        """Threaded version. """
+        """Run APBS calculations on molecule 0 and molecule 1.
+        Threaded version.
+        """
         apbs_template = """
 # APBS template for BrownDye grids
 read
@@ -2218,7 +2218,7 @@ class MonitorThread(Thread):
 
     def run(self):
         seconds = 0
-        readcount = 0
+        #readcount = 0
         #log_fileok = False
         results_file = 'results.xml'
         results_fileok = False
@@ -2255,8 +2255,11 @@ class MonitorThread(Thread):
                     rxn_probability = rates.findall('.//reaction-probability/mean')[0].text.strip()
                     mymsg = ('%s / %s' % (rate_constant, rxn_probability))
                     self.msgbar3.message('state', mymsg)
-                except XMLSyntaxError:
+                except:
+                    e = sys.exc_info()[0]
                     print("::: rates etree parse XMLSyntaxError")
+                    print("::: Error: %s" % e)
+                    raise
 
         time.sleep(2)
         if DEBUG > 2: print(self.mythread.is_alive())
@@ -2300,8 +2303,8 @@ class Psize(object):
 
     def parseInput(self, filename):
         """Parse input structure file in PDB or PQR format."""
-        with open(filename, "r") as file:
-            self.parseLines(file.readlines())
+        with open(filename, "r") as f:
+            self.parseLines(f.readlines())
 
     def parseLines(self, lines):
         """Parse the lines."""
@@ -2339,7 +2342,7 @@ class Psize(object):
                 self.gothet = self.gothet + 1
 
     def setConstant(self, name, value):
-        """ Set a constant to a value; returns 0 if constant not found """
+        """Set a constant to a value; returns 0 if constant not found."""
         try:
             self.constants[name] = value
             return 1
@@ -2347,11 +2350,11 @@ class Psize(object):
             return 0
 
     def getConstant(self, name):
-        """ Get a constant value; raises KeyError if constant not found """
+        """Get a constant value; raises KeyError if constant not found."""
         return self.constants[name]
 
     def setLength(self, maxlen, minlen):
-        """ Compute molecule dimensions """
+        """Compute molecule dimensions."""
         for i in range(3):
             self.olen[i] = maxlen[i] - minlen[i]
             if self.olen[i] < 0.1:
@@ -2359,13 +2362,13 @@ class Psize(object):
         return self.olen
 
     def setCoarseGridDims(self, olen):
-        """ Compute coarse mesh dimensions """
+        """Compute coarse mesh dimensions."""
         for i in range(3):
             self.clen[i] = self.constants["CFAC"] * olen[i]
         return self.clen
 
     def setFineGridDims(self, olen, clen):
-        """ Compute fine mesh dimensions """
+        """Compute fine mesh dimensions."""
         for i in range(3):
             self.flen[i] = olen[i] + self.constants["FADD"]
             if self.flen[i] > clen[i]:
@@ -2373,13 +2376,13 @@ class Psize(object):
         return self.flen
 
     def setCenter(self, maxlen, minlen):
-        """ Compute molecule center """
+        """Compute molecule center."""
         for i in range(3):
             self.cen[i] = (maxlen[i] + minlen[i]) / 2
         return self.cen
 
     def setFineGridPoints(self, flen):
-        """ Compute mesh grid points, assuming 4 levels in MG hierarchy """
+        """Compute mesh grid points, assuming 4 levels in MG hierarchy."""
         tn = [0, 0, 0]
         for i in range(3):
             tn[i] = int(flen[i]/self.constants["SPACE"] + 0.5)
@@ -2389,7 +2392,7 @@ class Psize(object):
         return self.n
 
     def setAll(self):
-        """ Set up all of the things calculated individually above. """
+        """Set up all of the things calculated individually above."""
         maxlen = self.getMax()
         minlen = self.getMin()
         self.setLength(maxlen, minlen)
@@ -2413,7 +2416,7 @@ class Psize(object):
     def getFineGridPoints(self): return self.n
 
     def runPsize(self, filename):
-        """Parse input PQR file and set parameters. """
+        """Parse input PQR file and set parameters."""
         self.parseInput(filename)
         self.setAll()
 
