@@ -1,11 +1,11 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Last modified: 2019-02-25 13:26:03
+# Last modified: 2019-02-26 19:41:38
 #
 # pylint: disable=no-member,import-error,missing-docstring,invalid-name,multiple-statements
 #
-'''BrownDye Tools plugin for Pymol
+"""BrownDye Tools plugin for Pymol
 
 For documentation see: https://github.com/rokdev/BrownDyeTools
 
@@ -19,29 +19,61 @@ This is free software, licensed under the GNU General Public License
 version 3. You should have received a copy of the GNU General Public
 License along with this program.
 If not, see <http://www.gnu.org/licenses/>.
-'''
+"""
 
+from __future__ import division
 from __future__ import print_function
+from __future__ import absolute_import
+
+import sys
 import os
 import subprocess
-import sys
-import string
+if sys.version_info[0] < 3:
+    #import urllib2
+    #from urllib2 import URLError, HTTPError
+    #from urllib import quote
+    #from idlelib.TreeWidget import TreeItem, TreeNode
+    #from Tkinter import *
+    import Tkinter
+    #import tkSimpleDialog
+    import tkFileDialog
+    #import tkMessageBox
+    #import tkColorChooser
+    #import Queue
+    #import ttk
+    #from StringIO import StringIO
+else:
+    #import urllib.request as urllib2
+    #from urllib.error import URLError, HTTPError
+    #from urllib.parse import quote
+    #from idlelib.tree import TreeItem, TreeNode
+    #from tkinter import *
+    import tkinter as Tkinter
+    #from tkinter import simpledialog as tkSimpleDialog
+    from tkinter import filedialog as tkFileDialog
+    #import tkinter.messagebox as tkMessageBox
+    #import tkinter.colorchooser as tkColorChooser
+    #import queue as Queue
+    #import tkinter.ttk as ttk
+    #from io import StringIO
+
+#import string
 import re
-#import filecmp
+##import filecmp
 import json
 import shutil
 import random
 import time
 import datetime
-#import tkSimpleDialog
-#import tkMessageBox
-import Tkinter
-import Pmw
-import tkFileDialog
+##import tkSimpleDialog
+##import tkMessageBox
+#import Tkinter
+#import tkFileDialog
 from threading import Thread
-#from lxml import etree
+##from lxml import etree
 from xml.etree import ElementTree as etree
-#import importlib
+##import importlib
+import Pmw
 
 DEBUG = 0
 
@@ -129,7 +161,7 @@ class DummyPymol(object):
             pass
 
         def get_names(self, name):
-            return ['mol1', 'mol2', 'map1', 'map2']
+            return ['mol0', 'mol1', 'map0', 'map1']
 
         def get_type(self, thing):
             if thing.startswith('mol'):
@@ -356,9 +388,9 @@ class BDPlugin(object):
 
         # arrange widgets using grid
         project_path_ent.grid(sticky='we', row=1, column=0, **pref)
-        project_path_but.grid(sticky='we', row=1, column=1, **pref)
+        project_path_but.grid(sticky='we', row=1, column=3, **pref)
         label.grid(sticky='we', row=1, column=2, **pref)
-        project_path_b_but.grid(sticky='we', row=1, column=3, **pref)
+        project_path_b_but.grid(sticky='we', row=1, column=1, **pref)
         pdb2pqr_path_ent.grid(sticky='we', row=2, column=0, **pref)
         pdb2pqr_path_but.grid(sticky='we', row=2, column=1, **pref)
         apbs_path_ent.grid(sticky='we', row=3, column=0, **pref)
@@ -962,20 +994,23 @@ class BDPlugin(object):
         grp_about = Tkinter.LabelFrame(page, text='About BrownDyeTools Plugin for PyMOL')
         # grp_about.grid(sticky='n', row=0, column=0, columnspan=2, **pref)
         grp_about.pack(fill='both', expand=True, **pref)
-        about_plugin = (
-            'This plugin provides a GUI for setting up and running Brownian '
-            'dynamics simulations with BrownDye.\n\n'
+        about_plugin = ("""
+        This plugin provides a GUI for setting up and running Brownian 
+        dynamics simulations with BrownDye.
 
-            'The plugin requires PDB2PQR, APBS and BrownDye. '
-            'To download and install these applications go to:\n\n'
-            'http://www.poissonboltzmann.org/ \nand\n'
-            'http://browndye.ucsd.edu/\n\n'
+        The plugin requires PDB2PQR, APBS and BrownDye. 
+        To download and install these applications go to:
 
-            'This software is released under the terms of GNU GPL3 license.\n'
-            'For more details please see the accompanying documentation.\n\n'
+        http://www.poissonboltzmann.org/
+        and
+        http://browndye.ucsd.edu/
 
-            '(c) 2016-19 National Biomedical Computation Resource\n'
-            'http://nbcr.ucsd.edu/')
+
+        This software is released under the terms of GNU GPL3 license.
+        For more details please see the accompanying documentation.
+
+        (c) 2016-19 National Biomedical Computation Resource
+        http://nbcr.ucsd.edu/""")
 
         label_about = Tkinter.Label(grp_about, text=about_plugin)
         # label_about.grid(sticky='we', row=0, column=2, **pref)
@@ -1015,6 +1050,7 @@ class BDPlugin(object):
     def runCmd(self, command):
         """Generic wrapper for running shell commands."""
         p = subprocess.Popen(command, stdout=subprocess.PIPE,
+                             universal_newlines=True,
                              stderr=subprocess.PIPE, shell=True)
         #p.wait()
         stdout, stderr = p.communicate()
@@ -1273,7 +1309,9 @@ class BDPlugin(object):
         return
 
     def runAPBS2(self):
-        """Run APBS calculations on molecule 0 and molecule 1"""
+        """Run APBS calculations on molecule 0 and molecule 1.
+        Non-threaded version.
+        """
         apbs_template = """
 # APBS template for BrownDye grids
 read
@@ -1305,7 +1343,7 @@ elec
 end
 print elecEnergy 1 end
 quit
-        """
+"""
         apbs_exe = '%s/%s' % (self.apbs_path.get(), APBS_EXE)
         if not self.checkExe(apbs_exe): return
         for i in range(2):
@@ -1344,6 +1382,8 @@ quit
             print("::: Running apbs on %s ... " % MOL[i])
             gmem = 200.0 * grid_points[0] * grid_points[1] * grid_points[2] / 1024 / 1024
             print("::: Estimated memory requirements: %.3f MB" % gmem)
+            self.status_bar.message('state', 'Busy: Running apbs. Please wait ...')
+            self.dialog.update()
             rc = self.runCmd(command)
             if rc == 0:
                 iomc = '%s-io.mc' % MOL[i]
@@ -1352,10 +1392,13 @@ quit
                 print("::: Done.")
             else:
                 print("::: Failed: %s" % command)
+        self.status_bar.message('state', 'Idle')
         return
 
     def runAPBS(self):
-        """Run APBS calculations on molecule 0 and molecule 1"""
+        """Run APBS calculations on molecule 0 and molecule 1.
+        Threaded version.
+        """
         apbs_template = """
 # APBS template for BrownDye grids
 read
@@ -1387,7 +1430,7 @@ elec
 end
 print elecEnergy 1 end
 quit
-        """
+"""
         apbs_exe = '%s/%s' % (self.apbs_path.get(), APBS_EXE)
         if not self.checkExe(apbs_exe): return
         for i in range(2):
@@ -1426,7 +1469,7 @@ quit
             print("::: Prepping apbs run for %s ... " % MOL[i])
             gmem = 200.0 * grid_points[0] * grid_points[1] * grid_points[2] / 1024 / 1024
             print("::: Estimated memory requirements: %.3f MB" % gmem)
-        thread = APBSRunner(apbs_exe, self.projectDir.get(), self.status_bar)
+        thread = APBSRunner(self, apbs_exe)
         thread.start()
         return
 
@@ -1714,7 +1757,7 @@ quit
     </molecule0>
   </combinations>
 </contacts>
-        """
+"""
         fout = DEFAULT_CONTACTS_FILE
         with open(fout, 'w') as f:
             f.write(contacts_template)
@@ -1850,7 +1893,8 @@ quit
         command = ('%s %s-%s-simulation.xml'
                    % (nam_simulation_exe, MOL[0], MOL[1]))
         if self.run_in_background.get():
-            p = subprocess.Popen(" nohup %s" % command, shell=True)
+            p = subprocess.Popen(" nohup %s" % command,
+                                 universal_newlines=True, shell=True)
             global JOBPID
             JOBPID = p.pid
             self.notebook.selectpage('BD simulation')
@@ -1872,10 +1916,12 @@ quit
         try:
             command = 'pkill -9 -P %d' % JOBPID
             s = subprocess.Popen(command, shell=True,
+                                 universal_newlines=True,
                                  stdout=subprocess.PIPE).stdout.read()
             if DEBUG > 1: print(command, s)
             command = 'kill -9 %d' % JOBPID
             s = subprocess.Popen(command, shell=True,
+                                 universal_newlines=True,
                                  stdout=subprocess.PIPE).stdout.read()
             if DEBUG > 1: print(command, s)
             print("::: Background job (PID %d) terminated." % JOBPID)
@@ -1924,6 +1970,7 @@ quit
         self.status_bar.message('state', 'Busy: Processing trajectory. Please wait ...')
         self.dialog.update()
         p = subprocess.Popen(command, stdout=subprocess.PIPE,
+                             universal_newlines=True,
                              stderr=subprocess.PIPE, shell=True)
         stdout, stderr = p.communicate()
         if p.returncode > 0:
@@ -2039,12 +2086,14 @@ quit
 
 class APBSRunner(Thread):
     """Run APBS in a thread."""
-    def __init__(self, apbs_exe, work_dir, status_bar):
+    def __init__(self, my_inst, apbs_exe):
         Thread.__init__(self)
         self.apbs_exe = apbs_exe
-        self.status_bar = status_bar
-        self.work_dir = work_dir
+        self.status_bar = my_inst.status_bar
+        if DEBUG > 2: print("%s" % (self.apbs_exe))
+        self.work_dir = my_inst.projectDir.get()
         if DEBUG > 2: print("Work directory: %s" % (self.work_dir))
+        return
 
     def run(self):
         print("::: Project directory: %s" % (self.work_dir))
@@ -2052,16 +2101,19 @@ class APBSRunner(Thread):
         for i in range(2):
             command = 'MCSH_HOME=. %s %s.in' % (self.apbs_exe, MOL[i])
             if DEBUG > 2: print(command)
-            self.status_bar.message('state', ('Busy: Running apbs on %s. Please wait ...' % MOL[i]))
+            self.status_bar.message('state',
+                                    ('Busy: Running apbs on %s. Please wait ...' % MOL[i]))
             p = subprocess.Popen(command, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE, shell=True, bufsize=1)
+                                 stderr=subprocess.PIPE,
+                                 universal_newlines=True,
+                                 shell=True, bufsize=1)
             global JOBPID
             JOBPID = p.pid
             self.pid = p.pid
             if DEBUG > 1: print('JOBPID: %d' % self.pid)
             for line in iter(p.stdout.readline, ''):
                 print(line)
-                #self.page.insert('end', "%s" % line)
+                ##self.page.insert('end', "%s" % line)
             stdout, stderr = p.communicate()
             self.outlog = stdout
             self.status = p.returncode
@@ -2093,6 +2145,7 @@ class BDTopRunner(Thread):
     def run(self):
         self.status_bar.message('state', 'Busy: Running bd_top. Please wait ...')
         p = subprocess.Popen(self.command, stdout=subprocess.PIPE,
+                             universal_newlines=True,
                              stderr=subprocess.PIPE, shell=True)
         stdout, stderr = p.communicate()
         self.outlog = stdout
@@ -2126,11 +2179,12 @@ class BDRunner(Thread):
         #self.page.yview('moveto', 1.0)
         self.status_bar.message('state', 'Busy: Running simulation. Please wait ...')
         p = subprocess.Popen(self.command, stdout=subprocess.PIPE,
+                             universal_newlines=True,
                              stderr=subprocess.PIPE, shell=True, bufsize=1)
         global JOBPID
         JOBPID = p.pid
         self.pid = p.pid
-        if DEBUG > 1: print('JOBPID: %d' % self.pid)
+        if DEBUG > 1: print("JOBPID: %d" % self.pid)
         for line in iter(p.stdout.readline, ''):
             print(line,)
             self.page.insert('end', "%s" % line)
@@ -2164,7 +2218,7 @@ class MonitorThread(Thread):
 
     def run(self):
         seconds = 0
-        readcount = 0
+        #readcount = 0
         #log_fileok = False
         results_file = 'results.xml'
         results_fileok = False
@@ -2191,6 +2245,7 @@ class MonitorThread(Thread):
                 command = ('cat %s | %s/compute_rate_constant'
                            % (results_file, self.bd_path))
                 p = subprocess.Popen(command, stdout=subprocess.PIPE,
+                                     universal_newlines=True,
                                      stderr=subprocess.PIPE, shell=True)
                 # p.wait()
                 stdout, stderr = p.communicate()
@@ -2200,8 +2255,11 @@ class MonitorThread(Thread):
                     rxn_probability = rates.findall('.//reaction-probability/mean')[0].text.strip()
                     mymsg = ('%s / %s' % (rate_constant, rxn_probability))
                     self.msgbar3.message('state', mymsg)
-                except XMLSyntaxError:
+                except:
+                    e = sys.exc_info()[0]
                     print("::: rates etree parse XMLSyntaxError")
+                    print("::: Error: %s" % e)
+                    raise
 
         time.sleep(2)
         if DEBUG > 2: print(self.mythread.is_alive())
@@ -2245,19 +2303,24 @@ class Psize(object):
 
     def parseInput(self, filename):
         """Parse input structure file in PDB or PQR format."""
-        with open(filename, "r") as file:
-            self.parseLines(file.readlines())
+        with open(filename, "r") as f:
+            self.parseLines(f.readlines())
 
     def parseLines(self, lines):
         """Parse the lines."""
         for line in lines:
-            if string.find(line, "ATOM") == 0:
-                subline = string.replace(line[30:], "-", " -")
-                ## words = string.split(subline) ## this is a hack
+            if line.find("ATOM") == 0:
+                ## subline = line[30:].replace("-", " -")
+                ## words = subline.split ## this is a hack
                 ## adhering to lovely PDB format definition (fixed space)
                 words = (line[30:38], line[38:46], line[46:54], line[54:63],
                          line[63:69], line[72:76], line[76:78])
-                if len(filter(string.strip, words)) < 4:
+                # rok: shouldn't the following be a map?
+                #if len(list(filter(str.strip, words))) < 4:
+                # like this?
+                #list(map(lambda x: x.strip(), words))
+                # anyway, the following should work just as well
+                if len(words) < 4:
                     sys.stderr.write("Can't parse following line:\n")
                     sys.stderr.write("%s\n" % line)
                     sys.exit(2)
@@ -2275,11 +2338,11 @@ class Psize(object):
                 for i in range(3):
                     self.minlen[i] = min(center[i] - rad, self.minlen[i])
                     self.maxlen[i] = max(center[i] + rad, self.maxlen[i])
-            elif string.find(line, "HETATM") == 0:
+            elif line.find("HETATM") == 0:
                 self.gothet = self.gothet + 1
 
     def setConstant(self, name, value):
-        """ Set a constant to a value; returns 0 if constant not found """
+        """Set a constant to a value; returns 0 if constant not found."""
         try:
             self.constants[name] = value
             return 1
@@ -2287,11 +2350,11 @@ class Psize(object):
             return 0
 
     def getConstant(self, name):
-        """ Get a constant value; raises KeyError if constant not found """
+        """Get a constant value; raises KeyError if constant not found."""
         return self.constants[name]
 
     def setLength(self, maxlen, minlen):
-        """ Compute molecule dimensions """
+        """Compute molecule dimensions."""
         for i in range(3):
             self.olen[i] = maxlen[i] - minlen[i]
             if self.olen[i] < 0.1:
@@ -2299,13 +2362,13 @@ class Psize(object):
         return self.olen
 
     def setCoarseGridDims(self, olen):
-        """ Compute coarse mesh dimensions """
+        """Compute coarse mesh dimensions."""
         for i in range(3):
             self.clen[i] = self.constants["CFAC"] * olen[i]
         return self.clen
 
     def setFineGridDims(self, olen, clen):
-        """ Compute fine mesh dimensions """
+        """Compute fine mesh dimensions."""
         for i in range(3):
             self.flen[i] = olen[i] + self.constants["FADD"]
             if self.flen[i] > clen[i]:
@@ -2313,13 +2376,13 @@ class Psize(object):
         return self.flen
 
     def setCenter(self, maxlen, minlen):
-        """ Compute molecule center """
+        """Compute molecule center."""
         for i in range(3):
             self.cen[i] = (maxlen[i] + minlen[i]) / 2
         return self.cen
 
     def setFineGridPoints(self, flen):
-        """ Compute mesh grid points, assuming 4 levels in MG hierarchy """
+        """Compute mesh grid points, assuming 4 levels in MG hierarchy."""
         tn = [0, 0, 0]
         for i in range(3):
             tn[i] = int(flen[i]/self.constants["SPACE"] + 0.5)
@@ -2329,7 +2392,7 @@ class Psize(object):
         return self.n
 
     def setAll(self):
-        """ Set up all of the things calculated individually above. """
+        """Set up all of the things calculated individually above."""
         maxlen = self.getMax()
         minlen = self.getMin()
         self.setLength(maxlen, minlen)
@@ -2353,7 +2416,7 @@ class Psize(object):
     def getFineGridPoints(self): return self.n
 
     def runPsize(self, filename):
-        """ Parse input PQR file and set parameters. """
+        """Parse input PQR file and set parameters."""
         self.parseInput(filename)
         self.setAll()
 
